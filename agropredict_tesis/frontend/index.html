@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgroPredict — Sistema de Predicción de Precios Agrícolas | Piura 2025</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="header">
+    <h1>🌾 AgroPredict</h1>
+    <p>Sistema web para la predicción de precios agrícolas mediante técnicas de Machine Learning — Región Piura, 2025</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="matriz">Matriz de Consistencia</button>
+    <button class="tab-btn" data-tab="resultados">Resultados (Cap. 4)</button>
+    <button class="tab-btn" data-tab="hipotesis">Contrastación de Hipótesis</button>
+    <button class="tab-btn" data-tab="prediccion">Predecir Precio</button>
+  </nav>
+
+  <!-- ============ TAB 1: MATRIZ DE CONSISTENCIA ============ -->
+  <section id="matriz" class="tab-content active">
+    <div class="card highlight">
+      <h2>Problema General</h2>
+      <p id="pg-text">Cargando...</p>
+    </div>
+    <div class="card highlight">
+      <h2>Objetivo General</h2>
+      <p id="og-text">Cargando...</p>
+    </div>
+    <div class="card highlight">
+      <h2>Hipótesis General</h2>
+      <p id="hg-text">Cargando...</p>
+    </div>
+
+    <h2 class="section-title">Dimensiones (Problemas / Objetivos / Hipótesis específicas)</h2>
+    <div id="dimensiones-grid" class="grid-4"></div>
+
+    <div class="card warning">
+      <h2>⚠️ Inconsistencias detectadas (a revisar antes de la defensa)</h2>
+      <ul id="inconsistencias-list"></ul>
+    </div>
+  </section>
+
+  <!-- ============ TAB 2: RESULTADOS ============ -->
+  <section id="resultados" class="tab-content">
+    <h2 class="section-title">Comparación de Modelos (Objetivo General) — Tabla 4.1</h2>
+    <div class="chart-wrap"><canvas id="chart-modelos"></canvas></div>
+    <table id="tabla-modelos" class="data-table"></table>
+
+    <h2 class="section-title">Ablation Study por Dimensión (H1–H4) — Tabla 4.4</h2>
+    <div class="chart-wrap"><canvas id="chart-ablation"></canvas></div>
+    <table id="tabla-ablation" class="data-table"></table>
+
+    <h2 class="section-title">Gráficos generados por el pipeline (MLflow)</h2>
+    <p class="hint">
+      Estas figuras las genera <code>backend/main.py</code> y quedan registradas en MLflow.
+      Para verlas en alta resolución y descargarlas para tu tesis:<br />
+      <code>mlflow ui --backend-store-uri backend/mlruns</code> → abre <code>http://localhost:5000</code> →
+      entra a cada run → pestaña <b>Artifacts</b>.
+    </p>
+    <div class="figures-grid">
+      <figure><img src="../backend/outputs/figures/figura_22_dashboard_comparacion_4_modelos.png" alt="Comparación de 4 modelos" /><figcaption>Figura 22 — Dashboard comparación de 4 modelos</figcaption></figure>
+      <figure><img src="../backend/outputs/figures/figura_ablation_study.png" alt="Ablation study" /><figcaption>Ablation study por dimensión</figcaption></figure>
+      <figure><img src="../backend/outputs/figures/figura_importancia_variables.png" alt="Importancia de variables" /><figcaption>Top 10 variables más importantes</figcaption></figure>
+      <figure><img src="../backend/outputs/figures/figura_real_vs_predicho.png" alt="Real vs predicho" /><figcaption>Real vs. Predicho (modelo final)</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- ============ TAB 3: HIPÓTESIS ============ -->
+  <section id="hipotesis" class="tab-content">
+    <h2 class="section-title">Contrastación de Hipótesis (Cap. 4.4)</h2>
+    <div id="hg-card" class="card highlight"></div>
+    <div id="he-cards" class="grid-4"></div>
+  </section>
+
+  <!-- ============ TAB 4: PREDICCIÓN ============ -->
+  <section id="prediccion" class="tab-content">
+    <h2 class="section-title">Probar el modelo final</h2>
+    <form id="predict-form" class="predict-form">
+      <label>Año <input type="number" name="ANO" value="2024" required /></label>
+      <label>Mes (1-12) <input type="number" name="MES" min="1" max="12" value="6" required /></label>
+      <label>Siembra (ha) <input type="number" step="any" name="SIEMBRA" value="10" required /></label>
+      <label>Cosecha (ha) <input type="number" step="any" name="COSECHA" value="8" required /></label>
+      <label>Producción (ton) <input type="number" step="any" name="PRODUCCION" value="120" required /></label>
+      <label>Provincia (código) <input type="number" name="PROVINCIA_enc" value="0" required /></label>
+      <label>Distrito (código) <input type="number" name="DISTRITO_enc" value="0" required /></label>
+      <label>Cultivo (código) <input type="number" name="CULTIVO_enc" value="0" required /></label>
+      <label>Precio mes anterior (S/·kg) <input type="number" step="any" name="PRECIO_LAG1" value="2.5" required /></label>
+      <label>Media móvil 3 meses (S/·kg) <input type="number" step="any" name="MEDIA_MOVIL_3" value="2.4" required /></label>
+      <button type="submit">Predecir precio</button>
+    </form>
+    <div id="predict-result" class="card"></div>
+  </section>
+
+  <footer class="footer">
+    AgroPredict — Tesis UNSCH 2025 · Región Piura
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

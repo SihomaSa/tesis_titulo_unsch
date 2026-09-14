@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+backend/data/*.csv
+!backend/data/.gitkeep
+backend/outputs/figures/*.png
+backend/outputs/tables/*.csv
+backend/outputs/tables/*.json
+backend/outputs/models/*.pkl
+backend/mlruns/*
+!backend/outputs/figures/.gitkeep
+!backend/outputs/tables/.gitkeep
+!backend/outputs/models/.gitkeep
+!backend/mlruns/.gitkeep
+.DS_Store
