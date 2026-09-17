@@ -1,0 +1,138 @@
+{
+  "fecha_generacion": "2026-09-17T03:07:28.572009",
+  "n_registros_validos": 14393,
+  "modelo_final": {
+    "r2_final": 0.9331563125172719,
+    "mae_final": 0.1355195807151488,
+    "rmse_final": 0.49851509250144427,
+    "mape_final": 4.791180943363889
+  },
+  "modelo_seleccionado": "LightGBM",
+  "metrics_por_modelo_MISMO_holdout": {
+    "Random Forest": {
+      "r2_final": 0.9324370754825666,
+      "mae_final": 0.12647315714628626,
+      "rmse_final": 0.5011899237774057,
+      "mape_final": 4.144272035986571
+    },
+    "LightGBM": {
+      "r2_final": 0.9331563125172719,
+      "mae_final": 0.1355195807151488,
+      "rmse_final": 0.49851509250144427,
+      "mape_final": 4.791180943363889
+    }
+  },
+  "hipotesis_general": {
+    "texto": "El entorno agroeconómico influye significativamente en las técnicas de Machine Learning para la predicción eficaz de precios agrícolas en la región Piura, 2025.",
+    "estado_vs_umbral_OFICIAL_0.85": "ACEPTADA",
+    "estado_vs_umbral_0.75_cap4_referencia": "ACEPTADA",
+    "estado_vs_umbral_0.85_cap3_referencia": "ACEPTADA",
+    "evidencia": "R² final = 0.9332 (umbral oficial = 0.85)"
+  },
+  "hipotesis_especificas": [
+    {
+      "codigo": "X1",
+      "texto": "La dimensión temporal del entorno agroeconómico influye significativamente en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
+      "R2_sin_dimension": 0.9573118124161061,
+      "diferencia_R2": -0.0011196067063470316,
+      "p_valor": 0.6875,
+      "significativa_wilcoxon": "No",
+      "importancia_gini_dimension": 0.003991990016948856
+    },
+    {
+      "codigo": "X2",
+      "texto": "La dimensión productiva del entorno agroeconómico influye significativamente en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
+      "R2_sin_dimension": 0.9582612091420611,
+      "diferencia_R2": -0.0020690034323020967,
+      "p_valor": 0.0625,
+      "significativa_wilcoxon": "No",
+      "importancia_gini_dimension": 0.012558590301592985
+    },
+    {
+      "codigo": "X3",
+      "texto": "La dimensión geográfica del entorno agroeconómico influye significativamente en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
+      "R2_sin_dimension": 0.9562046270781465,
+      "diferencia_R2": -1.2421368387416365e-05,
+      "p_valor": 0.5625,
+      "significativa_wilcoxon": "No",
+      "importancia_gini_dimension": 0.02056655453194994
+    },
+    {
+      "codigo": "X4",
+      "texto": "La dimensión económica histórica del entorno agroeconómico influye significativamente en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
+      "R2_sin_dimension": 0.6786608221123975,
+      "diferencia_R2": 0.2775313835973615,
+      "p_valor": 0.03125,
+      "significativa_wilcoxon": "Sí",
+      "importancia_gini_dimension": 0.9628828651495082
+    }
+  ],
+  "anomalias": {
+    "n_anomalias": 720,
+    "pct_anomalias": 5.002431737650246,
+    "muestra_path": "C:\\D\\agropredict_tesis\\tesis_titulo_unsch\\agropredict_tesis\\backend\\outputs\\tables\\muestra_50_anomalias_revision_manual.csv",
+    "precio_promedio_normal": 1.7156227601843048,
+    "precio_promedio_anomalo": 3.5860555555555558
+  },
+  "rendimiento_por_frecuencia_cultivo": {
+    "umbral_precio_alto_S_kg": 4.5,
+    "n_test_bajo": 2693,
+    "pct_test_bajo": 93.53942341090656,
+    "r2_bajo": 0.9835132772468049,
+    "mae_bajo": 0.06633915471808183,
+    "n_test_alto": 186,
+    "pct_test_alto": 6.460576589093435,
+    "r2_alto": 0.6111292505975363,
+    "mae_alto": 1.1371480065759088,
+    "cultivos_alto_valor": [
+      "AJO",
+      "ALGODON PIMA",
+      "ARVEJA GRANO SECO",
+      "ARVEJA GRANO VERDE",
+      "CACAO",
+      "CAFETO",
+      "CEBOLLA",
+      "FRIJOL CAUPI CHICLAYO CASTILLA CHILENO GRANO SECO",
+      "FRIJOL CAUPI CHICLAYO CASTILLA CHILENO GRANO VERDE",
+      "FRIJOL GRANO SECO",
+      "HABA GRANO SECO",
+      "MAIZ AMILACEO",
+      "MANGO",
+      "MANI  PARA FRUTA",
+      "PALTO",
+      "PAPRIKA",
+      "PIQUILLO (T.)",
+      "PITAHAYA",
+      "SOYA",
+      "VID"
+    ],
+    "frecuencia_pct_en_dataset_completo": {
+      "AJO": 0.79,
+      "ALGODON PIMA": 0.77,
+      "ARVEJA GRANO SECO": 2.65,
+      "ARVEJA GRANO VERDE": 1.29,
+      "CACAO": 1.01,
+      "CAFETO": 1.17,
+      "CEBOLLA": 2.08,
+      "FRIJOL CAUPI CHICLAYO CASTILLA CHILENO GRANO SECO": 3.77,
+      "FRIJOL CAUPI CHICLAYO CASTILLA CHILENO GRANO VERDE": 1.17,
+      "FRIJOL GRANO SECO": 2.49,
+      "HABA GRANO SECO": 1.7,
+      "MAIZ AMILACEO": 2.95,
+      "MANGO": 1.97,
+      "MANI  PARA FRUTA": 0.88,
+      "PALTO": 1.22,
+      "PAPRIKA": 1.37,
+      "PIQUILLO (T.)": 0.4,
+      "PITAHAYA": 0.08,
+      "SOYA": 0.86,
+      "VID": 0.63
+    }
+  },
+  "decisiones_metodologicas_resueltas": [
+    "Umbral R²: se fija 0.85 (sección 3.6.3) como oficial. Corregir el texto de la sección 4.4 (decía ≥0.75) para que cite ≥0.85.",
+    "X4: el Anexo 1 debe describirse como PRECIO_LAG1 + VARIACION_PRECIO + MEDIA_MOVIL_3 (no 'z-score de precio'), que es lo que el código usa y lo que sustenta los resultados ya reportados.",
+    "X3: el Anexo 1 debe listar solo PROVINCIA, DISTRITO y CULTIVO (sin UBIGEO), que es lo que el código realmente usa (USE_UBIGEO_EN_X3=False).",
+    "Población vs. muestra: 116,000 (Anexo 1) es la población tras filtrar a provincias de Piura; 14,393 (cap.4.4) es la muestra final de modelado tras la limpieza de 3.7.2.1.B. No es un error, son dos cifras de dos etapas distintas — aclarar esto en el texto."
+  ]
+}

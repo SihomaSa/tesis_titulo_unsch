@@ -1,0 +1,3 @@
+Segmento,N_test,%_del_test,R2,MAE_S_kg
+Cultivos comunes (≤S/.4.5/kg),2693,93.5,0.9835,0.0663
+Cultivos de alto valor (>S/.4.5/kg),186,6.5,0.6111,1.1371
