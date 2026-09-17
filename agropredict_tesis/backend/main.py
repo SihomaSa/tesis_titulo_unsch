@@ -22,8 +22,15 @@ Uso:
     pip install -r requirements.txt
     python main.py
 """
-import sys
+
+# 🔧 CAMBIO 1: Forzar backend Agg ANTES de cualquier import de matplotlib
 import os
+os.environ.setdefault("MPLBACKEND", "Agg")  # <- esto evita el crash de Tkinter
+
+import matplotlib
+matplotlib.use("Agg")  # doble seguridad
+
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 

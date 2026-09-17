@@ -7,6 +7,9 @@ esto — así el código y la tesis nunca se desalinean por tener el texto
 copiado y pegado en 5 archivos distintos (que es lo que pasaba antes).
 """
 import os
+os.environ.setdefault("MPLBACKEND", "Agg")
+import matplotlib
+matplotlib.use("Agg")
 import mlflow
 from pathlib import Path
 
