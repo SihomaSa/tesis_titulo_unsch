@@ -30,9 +30,15 @@ app = FastAPI(
 )
 
 # En producción, reemplaza "*" por el dominio real de tu frontend (Firebase Hosting, etc.)
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS",
+    "https://agropredict-tesis.web.app,https://agropredict-tesis.firebaseapp.com,http://localhost:5500,http://127.0.0.1:5500"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
