@@ -2,10 +2,15 @@
 // (por ejemplo Railway, Render, o Cloud Run). En local, deja localhost.
 // Detectar entorno
 
-const isLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+(function () {
+  const host = window.location.hostname;
+  const isLocal = host === "localhost" || host === "127.0.0.1" || host === "";
 
-const API_BASE_URL = isLocal
-  ? "http://localhost:8000"
-  : "https://tesistitulounsch-production.up.railway.app";
+  // ⚠️ Cambia esta URL por la de tu proyecto en Railway
+  const RAILWAY_URL = "https://tesistitulounsch-production.up.railway.app";
 
-export default API_BASE_URL;
+  // Exponer globalmente para que app.js la use
+  window.API_BASE_URL = isLocal ? "http://localhost:8000" : RAILWAY_URL;
+
+  console.log("[AgroPredict] API_BASE_URL =", window.API_BASE_URL);
+})();
