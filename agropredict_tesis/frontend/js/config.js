@@ -7,7 +7,7 @@
   const isLocal = host === "localhost" || host === "127.0.0.1" || host === "";
 
   // ⚠️ Cambia esta URL por la de tu proyecto en Railway
-  const RAILWAY_URL = "https://tesistitulounsch-production.up.railway.app";
+  const RAILWAY_URL = "https://tesistitulounsch-production-32cc.up.railway.app";
 
   // Exponer globalmente para que app.js la use
   window.API_BASE_URL = isLocal ? "http://localhost:8000" : RAILWAY_URL;

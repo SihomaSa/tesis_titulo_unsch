@@ -13,150 +13,255 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 </head>
 <body>
-  <header class="header">
-    <h1>🌾 AgroPredict</h1>
-    <p>Sistema web para la predicción de precios agrícolas mediante técnicas de Machine Learning — Región Piura, 2025</p>
+  <a class="skip-link" href="#main">Saltar al contenido</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path d="M24 45V15" stroke="#8FCBA9" stroke-width="2.4" stroke-linecap="round" fill="none" />
+        <g fill="#E9C349">
+          <ellipse cx="24" cy="8" rx="3" ry="6" />
+          <ellipse cx="18.2" cy="17" rx="2.8" ry="6" transform="rotate(-38 18.2 17)" />
+          <ellipse cx="29.8" cy="17" rx="2.8" ry="6" transform="rotate(38 29.8 17)" />
+          <ellipse cx="17.6" cy="26.5" rx="2.8" ry="6" transform="rotate(-38 17.6 26.5)" />
+          <ellipse cx="30.4" cy="26.5" rx="2.8" ry="6" transform="rotate(38 30.4 26.5)" />
+        </g>
+        <path d="M24 45c-1.5-4-6-6.5-10-6.5M24 45c1.5-4 6-6.5 10-6.5" stroke="#8FCBA9" stroke-width="2" stroke-linecap="round" fill="none" />
+      </svg>
+      <div>
+        <h1>AgroPredict</h1>
+        <p class="header-sub">Sistema web para la predicción de precios agrícolas mediante técnicas de Machine Learning — Región Piura, 2025</p>
+        <p class="header-meta">Tesis de pregrado, Ingeniería de Sistemas, UNSCH</p>
+      </div>
+    </div>
   </header>
 
-  <nav class="tabs" role="tablist" aria-label="Secciones del dashboard">
-    <button class="tab-btn active" data-tab="matriz" role="tab" aria-selected="true">Matriz de Consistencia</button>
-    <button class="tab-btn" data-tab="resultados" role="tab" aria-selected="false">Resultados (Cap. 4)</button>
-    <button class="tab-btn" data-tab="hipotesis" role="tab" aria-selected="false">Contrastación de Hipótesis</button>
-    <button class="tab-btn" data-tab="prediccion" role="tab" aria-selected="false">Predecir Precio</button>
+  <nav class="tabs" aria-label="Secciones del dashboard">
+    <div class="wrap tabs-inner" role="tablist">
+      <button class="tab-btn active" id="tab-matriz" data-tab="matriz" role="tab" aria-selected="true" aria-controls="matriz">Matriz de Consistencia</button>
+      <button class="tab-btn" id="tab-resultados" data-tab="resultados" role="tab" aria-selected="false" aria-controls="resultados" tabindex="-1">Resultados (Cap. 4)</button>
+      <button class="tab-btn" id="tab-hipotesis" data-tab="hipotesis" role="tab" aria-selected="false" aria-controls="hipotesis" tabindex="-1">Contrastación de Hipótesis</button>
+      <button class="tab-btn" id="tab-prediccion" data-tab="prediccion" role="tab" aria-selected="false" aria-controls="prediccion" tabindex="-1">Predecir Precio</button>
+    </div>
   </nav>
 
-  <!-- ============ TAB 1: MATRIZ DE CONSISTENCIA ============ -->
-  <section id="matriz" class="tab-content active">
-    <div class="card highlight">
-      <h2>Problema General</h2>
-      <p id="pg-text">Cargando...</p>
-    </div>
-    <div class="card highlight">
-      <h2>Objetivo General</h2>
-      <p id="og-text">Cargando...</p>
-    </div>
-    <div class="card highlight">
-      <h2>Hipótesis General</h2>
-      <p id="hg-text">Cargando...</p>
-    </div>
+  <main id="main" class="wrap">
 
-    <h2 class="section-title">Dimensiones (Problemas / Objetivos / Hipótesis específicas)</h2>
-    <div id="dimensiones-grid" class="grid-4"></div>
-
-    <div class="card warning">
-      <h2>⚠️ Inconsistencias detectadas (a revisar antes de la defensa)</h2>
-      <ul id="inconsistencias-list"></ul>
-    </div>
-  </section>
-
-  <!-- ============ TAB 2: RESULTADOS ============ -->
-  <section id="resultados" class="tab-content">
-    <h2 class="section-title">Comparación de Modelos (Objetivo General) — Tabla 4.1</h2>
-    <div class="chart-wrap is-loading" id="chart-modelos-wrap"><canvas id="chart-modelos"></canvas></div>
-    <table id="tabla-modelos" class="data-table"></table>
-
-    <h2 class="section-title">Ablation Study por Dimensión (H1–H4) — Tabla 4.4</h2>
-    <div class="chart-wrap is-loading" id="chart-ablation-wrap"><canvas id="chart-ablation"></canvas></div>
-    <table id="tabla-ablation" class="data-table"></table>
-
-    <h2 class="section-title">Gráficos generados por el pipeline (MLflow)</h2>
-    <p class="hint">
-      Estas figuras las genera <code>backend/main.py</code> y quedan registradas en MLflow.
-      Para verlas en alta resolución y descargarlas para tu tesis:<br />
-      <code>mlflow ui --backend-store-uri backend/mlruns</code> → abre <code>http://localhost:5000</code> →
-      entra a cada run → pestaña <b>Artifacts</b>.
-    </p>
-    <div class="figures-grid">
-      <figure><img src="assets/figures/figura_22_dashboard_comparacion_4_modelos.png" alt="Comparación de 4 modelos" /><figcaption>Figura 22 — Dashboard comparación de 4 modelos</figcaption></figure>
-      <figure><img src="assets/figures/figura_ablation_study.png" alt="Ablation study" /><figcaption>Ablation study por dimensión</figcaption></figure>
-      <figure><img src="assets/figures/figura_importancia_variables.png" alt="Importancia de variables" /><figcaption>Top 10 variables más importantes</figcaption></figure>
-      <figure><img src="assets/figures/figura_real_vs_predicho.png" alt="Real vs predicho" /><figcaption>Real vs. Predicho (modelo final)</figcaption></figure>
-    </div>
-  </section>
-
-  <!-- ============ TAB 3: HIPÓTESIS ============ -->
-  <section id="hipotesis" class="tab-content">
-    <h2 class="section-title">Contrastación de Hipótesis (Cap. 4.4)</h2>
-    <div id="hg-card" class="card highlight"></div>
-    <div id="he-cards" class="grid-4"></div>
-  </section>
-
-  <!-- ============ TAB 4: PREDICCIÓN ============ -->
-  <section id="prediccion" class="tab-content">
-    <h2 class="section-title">Probar el modelo final</h2>
-    <p class="predict-intro">
-      Ingresa los datos de una campaña para obtener el precio estimado por el modelo ganador.
-      Los campos «código» deben coincidir con el <code>LabelEncoder</code> usado al entrenar
-      (mismo orden de <code>classes_</code> que en <code>backend/main.py</code>); no son nombres libres.
-    </p>
-    <form id="predict-form" class="predict-form" novalidate>
-      <fieldset>
-        <legend>Periodo</legend>
-        <div class="field-grid">
-          <label>Año
-            <input type="number" name="ANO" value="2024" min="2000" max="2100" required />
-          </label>
-          <label>Mes (1–12)
-            <input type="number" name="MES" min="1" max="12" value="6" required />
-          </label>
+    <!-- ============ TAB 1: MATRIZ DE CONSISTENCIA ============ -->
+    <section id="matriz" class="tab-content active" role="tabpanel" aria-labelledby="tab-matriz">
+      <dl class="matrix-core">
+        <div class="matrix-row">
+          <dt>Problema general</dt>
+          <dd id="pg-text">Cargando…</dd>
         </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Producción de la campaña</legend>
-        <div class="field-grid">
-          <label>Siembra (ha)
-            <input type="number" step="any" min="0" name="SIEMBRA" id="input-siembra" value="10" required />
-          </label>
-          <label>Cosecha (ha)
-            <input type="number" step="any" min="0" name="COSECHA" id="input-cosecha" value="8" required />
-            <span class="field-note" id="note-cosecha"></span>
-          </label>
-          <label>Producción (ton)
-            <input type="number" step="any" min="0" name="PRODUCCION" value="120" required />
-          </label>
+        <div class="matrix-row">
+          <dt>Objetivo general</dt>
+          <dd id="og-text">Cargando…</dd>
         </div>
-      </fieldset>
-
-      <fieldset class="fx-categoria">
-        <legend>Ubicación y cultivo (códigos del encoder)</legend>
-        <div class="field-grid">
-          <label>Provincia (código)
-            <input type="number" name="PROVINCIA_enc" value="0" required />
-            <span class="field-note">Código del LabelEncoder, no el nombre</span>
-          </label>
-          <label>Distrito (código)
-            <input type="number" name="DISTRITO_enc" value="0" required />
-            <span class="field-note">Código del LabelEncoder, no el nombre</span>
-          </label>
-          <label>Cultivo (código)
-            <input type="number" name="CULTIVO_enc" value="0" required />
-            <span class="field-note">Código del LabelEncoder, no el nombre</span>
-          </label>
+        <div class="matrix-row">
+          <dt>Hipótesis general</dt>
+          <dd id="hg-text">Cargando…</dd>
         </div>
-      </fieldset>
+      </dl>
 
-      <fieldset class="fx-precio">
-        <legend>Precio histórico</legend>
-        <div class="field-grid">
-          <label>Precio mes anterior (S/·kg)
-            <input type="number" step="any" min="0" name="PRECIO_LAG1" id="input-precio-lag1" value="2.5" required />
-          </label>
-          <label>Media móvil 3 meses (S/·kg)
-            <input type="number" step="any" min="0" name="MEDIA_MOVIL_3" value="2.4" required />
-          </label>
-        </div>
-      </fieldset>
+      <h2 class="section-title">Dimensiones del entorno agroeconómico</h2>
+      <p class="section-lead">Cada dimensión tiene su problema y objetivo específicos, y agrupa las variables que se usan en el modelo. El color de cada dimensión se mantiene en los gráficos y resultados.</p>
+      <div id="dimensiones-grid" class="grid-dims"></div>
+    </section>
 
-      <div class="predict-actions">
-        <button type="submit" id="predict-submit">Predecir precio</button>
+    <!-- ============ TAB 2: RESULTADOS ============ -->
+    <section id="resultados" class="tab-content" role="tabpanel" aria-labelledby="tab-resultados" hidden>
+      <h2 class="section-title">Comparación de modelos <span class="tag">Tabla 4.1</span></h2>
+      <p class="section-lead">R² medio en validación cruzada temporal (TSS). La línea punteada marca el umbral oficial de aceptación, R² = 0.85.</p>
+      <div class="chart-wrap is-loading" id="chart-modelos-wrap"><canvas id="chart-modelos" aria-label="R² medio por modelo" role="img"></canvas></div>
+      <div class="table-scroll"><table id="tabla-modelos" class="data-table"></table></div>
+
+      <h2 class="section-title">Ablation study por dimensión <span class="tag">Tabla 4.4</span></h2>
+      <p class="section-lead">R² del modelo al excluir cada dimensión, comparado con el modelo completo (línea punteada). La significancia se evalúa con la prueba de Wilcoxon.</p>
+      <div class="chart-wrap is-loading" id="chart-ablation-wrap"><canvas id="chart-ablation" aria-label="R² al excluir cada dimensión" role="img"></canvas></div>
+      <div class="table-scroll"><table id="tabla-ablation" class="data-table"></table></div>
+
+      <h2 class="section-title">Gráficos generados por el pipeline</h2>
+      <p class="hint">
+        Las figuras las genera <code>backend/main.py</code> y quedan registradas en MLflow. Para verlas en alta resolución y descargarlas para la tesis:
+        <code>mlflow ui --backend-store-uri backend/mlruns</code>, abre <code>http://localhost:5000</code>,
+        entra a cada run y ve a la pestaña <b>Artifacts</b>.
+      </p>
+      <div class="figures-grid">
+        <figure><img loading="lazy" src="assets/figures/figura_22_dashboard_comparacion_4_modelos.png" alt="Dashboard de comparación de 4 modelos" /><figcaption><b>Fig. 1.</b> Dashboard de comparación de 4 modelos <span class="fig-ref">Figura 22 del pipeline</span></figcaption></figure>
+        <figure><img loading="lazy" src="assets/figures/figura_ablation_study.png" alt="Ablation study" /><figcaption><b>Fig. 2.</b> Ablation study por dimensión</figcaption></figure>
+        <figure><img loading="lazy" src="assets/figures/figura_importancia_variables.png" alt="Importancia de variables" /><figcaption><b>Fig. 3.</b> Top 10 variables más importantes</figcaption></figure>
+        <figure><img loading="lazy" src="assets/figures/figura_real_vs_predicho.png" alt="Real versus predicho" /><figcaption><b>Fig. 4.</b> Real vs. predicho (modelo final)</figcaption></figure>
       </div>
-    </form>
-    <div id="predict-result"></div>
-  </section>
+    </section>
+
+    <!-- ============ TAB 3: HIPÓTESIS ============ -->
+    <section id="hipotesis" class="tab-content" role="tabpanel" aria-labelledby="tab-hipotesis" hidden>
+      <h2 class="section-title">Contrastación de hipótesis <span class="tag">Cap. 4.4</span></h2>
+      <div id="hg-card"></div>
+
+      <h2 class="section-title">Hipótesis específicas</h2>
+      <p class="section-lead">Efecto de excluir cada dimensión sobre el R², su significancia (Wilcoxon) y el peso de la dimensión en la importancia del modelo.</p>
+      <div id="he-cards" class="grid-dims"></div>
+      <p id="he-note" class="fineprint"></p>
+    </section>
+
+    <!-- ============ TAB 4: PREDICCIÓN ============ -->
+    <section id="prediccion" class="tab-content" role="tabpanel" aria-labelledby="tab-prediccion" hidden>
+      <h2 class="section-title">Probar el modelo final</h2>
+      <p class="section-lead">
+        Ingresa los datos de una campaña agrícola para obtener el precio estimado por el modelo ganador.
+        Selecciona la ubicación y el cultivo por su <b>nombre</b>; el sistema se encarga de traducirlos
+        internamente al código que espera el modelo.
+      </p>
+
+      <div class="predict-layout">
+        <form id="predict-form" class="predict-form" novalidate>
+
+          <!-- ===== X1: Periodo ===== -->
+          <fieldset class="fx-x1">
+            <legend><span class="dim-tag">X1</span> Periodo</legend>
+            <div class="field-grid">
+              <label>Año
+                <input type="number" name="ANO" value="2024" min="2000" max="2100" step="1" required />
+              </label>
+              <label>Mes
+                <select name="MES" id="input-mes" required>
+                  <option value="1">Enero</option>
+                  <option value="2">Febrero</option>
+                  <option value="3">Marzo</option>
+                  <option value="4">Abril</option>
+                  <option value="5">Mayo</option>
+                  <option value="6" selected>Junio</option>
+                  <option value="7">Julio</option>
+                  <option value="8">Agosto</option>
+                  <option value="9">Septiembre</option>
+                  <option value="10">Octubre</option>
+                  <option value="11">Noviembre</option>
+                  <option value="12">Diciembre</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
+
+          <!-- ===== X2: Producción ===== -->
+          <fieldset class="fx-x2">
+            <legend><span class="dim-tag">X2</span> Producción de la campaña</legend>
+            <div class="field-grid">
+              <label>Siembra (ha)
+                <input type="number" step="any" min="0" name="SIEMBRA" id="input-siembra" value="10" required />
+              </label>
+              <label>Cosecha (ha)
+                <input type="number" step="any" min="0" name="COSECHA" id="input-cosecha" value="8" required />
+                <span class="field-note" id="note-cosecha" aria-live="polite"></span>
+              </label>
+              <label>Producción (ton)
+                <input type="number" step="any" min="0" name="PRODUCCION" value="120" required />
+              </label>
+            </div>
+          </fieldset>
+
+          <!-- ===== X3: Ubicación y cultivo ===== -->
+          <fieldset class="fx-x3">
+            <legend><span class="dim-tag">X3</span> Ubicación y cultivo</legend>
+            <div class="field-grid">
+              <label>Provincia
+                <select name="PROVINCIA" id="input-provincia" required>
+                  <option value="AYABACA">Ayabaca</option>
+                  <option value="HUANCABAMBA">Huancabamba</option>
+                  <option value="MORROPON">Morropón</option>
+                  <option value="PAITA">Paita</option>
+                  <option value="PIURA" selected>Piura</option>
+                  <option value="SECHURA">Sechura</option>
+                  <option value="SULLANA">Sullana</option>
+                  <option value="TALARA">Talara</option>
+                </select>
+              </label>
+
+              <label>Distrito
+                <select name="DISTRITO" id="input-distrito" required>
+                  <option value="PIURA" selected>Piura</option>
+                  <option value="CASTILLA">Castilla</option>
+                  <option value="CATACAOS">Catacaos</option>
+                  <option value="CURA MORI">Cura Mori</option>
+                  <option value="EL TALLAN">El Tallán</option>
+                  <option value="LA ARENA">La Arena</option>
+                  <option value="LA UNION">La Unión</option>
+                  <option value="LAS LOMAS">Las Lomas</option>
+                  <option value="TAMBO GRANDE">Tambo Grande</option>
+                </select>
+              </label>
+
+              <label>Cultivo
+                <select name="CULTIVO" id="input-cultivo" required>
+                  <option value="14010020000">Arroz</option>
+                  <option value="14010070000">Maíz amarillo duro</option>
+                  <option value="14010080000">Maíz amiláceo</option>
+                  <option value="14010050000">Cebada grano</option>
+                  <option value="14010110000">Trigo blando</option>
+                  <option value="14010090000">Quinua</option>
+                  <option value="14040090000">Papa</option>
+                  <option value="14040030000">Camote</option>
+                  <option value="14040140000">Yuca</option>
+                  <option value="14030100000">Cebolla</option>
+                  <option value="14030210000">Tomate</option>
+                  <option value="14030260104">Piquillo</option>
+                  <option value="14030260101">Paprika</option>
+                  <option value="14030280000">Maíz choclo</option>
+                  <option value="14020050000">Melón</option>
+                  <option value="14020060000">Sandía</option>
+                  <option value="13010210000">Mango</option>
+                  <option value="13010230000">Maracuyá</option>
+                  <option value="13010170102">Limón sutil</option>
+                  <option value="13010270000">Naranjo</option>
+                  <option value="13010320000">Palto</option>
+                  <option value="15010040000">Plátano</option>
+                  <option value="13020120000">Vid</option>
+                  <option value="15010020000">Papaya</option>
+                  <option value="15020020102">Algodón Pima</option>
+                  <option value="15010200000">Caña de azúcar</option>
+                  <option value="13020030000">Cafeto</option>
+                  <option value="13020020000">Cacao</option>
+                  <option value="12010010000">Alfalfa</option>
+                  <option value="12010030000">Pasto elefante</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
+
+          <!-- ===== X4: Precio histórico ===== -->
+          <fieldset class="fx-x4">
+            <legend><span class="dim-tag">X4</span> Precio histórico</legend>
+            <div class="field-grid">
+              <label>Precio del mes anterior (S/ por kg)
+                <input type="number" step="any" min="0" name="PRECIO_LAG1" id="input-precio-lag1" value="2.5" required />
+              </label>
+              <label>Media móvil de 3 meses (S/ por kg)
+                <input type="number" step="any" min="0" name="MEDIA_MOVIL_3" value="2.4" required />
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="predict-actions">
+            <button type="submit" class="btn-primary" id="predict-submit">Predecir precio</button>
+            <button type="reset" class="btn-ghost" id="predict-reset">Restablecer valores</button>
+          </div>
+        </form>
+
+        <aside class="predict-side" aria-live="polite">
+          <div id="predict-result">
+            <div class="result-empty">
+              <p><b>Aquí aparecerá el precio estimado.</b></p>
+              <p>Completa el formulario y pulsa «Predecir precio».</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
 
   <footer class="footer">
-    AgroPredict — Tesis UNSCH 2025 · Región Piura
+    AgroPredict — Tesis UNSCH 2025, Región Piura
   </footer>
 
   <script src="js/config.js"></script>
