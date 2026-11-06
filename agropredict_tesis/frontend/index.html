@@ -71,33 +71,31 @@
 
     <!-- ============ TAB 2: RESULTADOS ============ -->
     <section id="resultados" class="tab-content" role="tabpanel" aria-labelledby="tab-resultados" hidden>
-      <h2 class="section-title">Comparación de modelos <span class="tag">Tabla 4.1</span></h2>
-      <p class="section-lead">R² medio en validación cruzada temporal (TSS). La línea punteada marca el umbral oficial de aceptación, R² = 0.85.</p>
+      <h2 class="section-title">Comparación de modelos <span class="tag">Prueba</span></h2>
+      <p class="section-lead">R² en el conjunto de prueba (los meses más recientes, usados una sola vez), con los dos baselines ingenuos en gris. La línea punteada marca el umbral oficial de aceptación, R² = 0.85.</p>
       <div class="chart-wrap is-loading" id="chart-modelos-wrap"><canvas id="chart-modelos" aria-label="R² medio por modelo" role="img"></canvas></div>
       <div class="table-scroll"><table id="tabla-modelos" class="data-table"></table></div>
 
-      <h2 class="section-title">Ablation study por dimensión <span class="tag">Tabla 4.4</span></h2>
+      <h2 class="section-title">Ablation study por dimensión <span class="tag">Hipótesis</span></h2>
       <p class="section-lead">R² del modelo al excluir cada dimensión, comparado con el modelo completo (línea punteada). La significancia se evalúa con la prueba de Wilcoxon.</p>
       <div class="chart-wrap is-loading" id="chart-ablation-wrap"><canvas id="chart-ablation" aria-label="R² al excluir cada dimensión" role="img"></canvas></div>
       <div class="table-scroll"><table id="tabla-ablation" class="data-table"></table></div>
 
       <h2 class="section-title">Gráficos generados por el pipeline</h2>
       <p class="hint">
-        Las figuras las genera <code>backend/main.py</code> y quedan registradas en MLflow. Para verlas en alta resolución y descargarlas para la tesis:
-        <code>mlflow ui --backend-store-uri backend/mlruns</code>, abre <code>http://localhost:5000</code>,
-        entra a cada run y ve a la pestaña <b>Artifacts</b>.
+        Las figuras las genera <code>backend/main.py</code> (carpeta <code>backend/outputs/figures</code>) y se copian automáticamente a este sitio al terminar la ejecución.
       </p>
       <div class="figures-grid">
-        <figure><img loading="lazy" src="assets/figures/figura_22_dashboard_comparacion_4_modelos.png" alt="Dashboard de comparación de 4 modelos" /><figcaption><b>Fig. 1.</b> Dashboard de comparación de 4 modelos <span class="fig-ref">Figura 22 del pipeline</span></figcaption></figure>
-        <figure><img loading="lazy" src="assets/figures/figura_ablation_study.png" alt="Ablation study" /><figcaption><b>Fig. 2.</b> Ablation study por dimensión</figcaption></figure>
-        <figure><img loading="lazy" src="assets/figures/figura_importancia_variables.png" alt="Importancia de variables" /><figcaption><b>Fig. 3.</b> Top 10 variables más importantes</figcaption></figure>
+        <figure><img loading="lazy" src="assets/figures/figura_comparacion_modelos_prueba.png" alt="Dashboard de comparación de 4 modelos" /><figcaption><b>Fig. 1.</b> Comparación de modelos y baselines (prueba)</figcaption></figure>
+        <figure><img loading="lazy" src="assets/figures/figura_ablation_por_dimension.png" alt="Ablation study" /><figcaption><b>Fig. 2.</b> Ablation study por dimensión</figcaption></figure>
+        <figure><img loading="lazy" src="assets/figures/figura_importancia_por_dimension.png" alt="Importancia de variables" /><figcaption><b>Fig. 3.</b> Importancia por dimensión (ganancia, SHAP, permutación)</figcaption></figure>
         <figure><img loading="lazy" src="assets/figures/figura_real_vs_predicho.png" alt="Real versus predicho" /><figcaption><b>Fig. 4.</b> Real vs. predicho (modelo final)</figcaption></figure>
       </div>
     </section>
 
     <!-- ============ TAB 3: HIPÓTESIS ============ -->
     <section id="hipotesis" class="tab-content" role="tabpanel" aria-labelledby="tab-hipotesis" hidden>
-      <h2 class="section-title">Contrastación de hipótesis <span class="tag">Cap. 4.4</span></h2>
+      <h2 class="section-title">Contrastación de hipótesis <span class="tag">Cap. 4.3</span></h2>
       <div id="hg-card"></div>
 
       <h2 class="section-title">Hipótesis específicas</h2>

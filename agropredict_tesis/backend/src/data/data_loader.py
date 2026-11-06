@@ -1,53 +1,67 @@
 """
-data_loader.py — Carga y limpieza (sección 3.6.2 y 3.7.2.1.B de la tesis).
+data_loader.py — FASE 2 (comprensión de datos) y primera parte de la FASE 3
+(limpieza). Devuelve el DataFrame limpio y la tabla del embudo de depuración
+(124 514 → n final), que sustenta el protocolo descrito en 4.1.1.
 
-Instrumento: "Formato_dataset_productos_dra.csv" — 124,514 registros / 15
-columnas, portal Datos Abiertos del Gobierno Regional de Piura.
+Correcciones respecto a la versión anterior:
+  * La columna MES del dataset oficial viene como AAAAMM (p. ej. 202002).
+    Antes se usaba tal cual en sin/cos y ESTACION, lo que dejaba la
+    dimensión temporal sin información (ESTACION=3 en todas las filas).
+    Ahora se extrae el mes real (MES_NUM) y se construye PERIODO.
+  * Ya NO se imputa la variable objetivo con la mediana: un precio inventado
+    no es una observación. Los registros sin precio se descartan y se
+    reportan en el embudo.
 """
+import numpy as np
 import pandas as pd
 
-from src.config import DATA_PATH, TARGET, PROVINCIAS_PIURA
+from src.config import DATA_PATH, TARGET, PROVINCIAS_PIURA, OUT_TAB
+import os
 
 
-def load_and_clean(path: str = DATA_PATH) -> pd.DataFrame:
-    """Carga el CSV oficial y aplica la limpieza descrita en 3.7.2.1.B:
-    - Filtra a provincias de la región Piura.
-    - Imputa nulos de PRECIO_CHACRA con la mediana global.
-    - Descarta registros inconsistentes (COSECHA=0 y PRODUCCION>0).
-    - Descarta precios <= 0 y duplicados.
+def _mes_real(df: pd.DataFrame) -> pd.Series:
+    """MES puede venir como 1-12 o como AAAAMM; devuelve siempre 1-12."""
+    mes = pd.to_numeric(df["MES"], errors="coerce")
+    return np.where(mes > 12, mes % 100, mes)
 
-    Devuelve el DataFrame limpio y agrega logging de auditoría en consola
-    para poder comparar contra los números que ya reportaste en el
-    capítulo 4 (Anexo 1: ~116,000 registros población; cap.4: 14,393
-    registros válidos en la muestra final de modelado).
-    """
+
+def load_and_clean(path: str = DATA_PATH):
     df = pd.read_csv(path, low_memory=False)
-    n_inicial = len(df)
-    print(f"[data_loader] Registros iniciales: {n_inicial:,}")
+    embudo = [("Registros iniciales del dataset", len(df))]
 
-    df = df[df["PROVINCIA"].isin(PROVINCIAS_PIURA)]
-    print(f"[data_loader] Registros en provincias de Piura: {len(df):,}")
+    df = df[df["PROVINCIA"].astype(str).str.strip().str.upper().isin(PROVINCIAS_PIURA)].copy()
+    df["PROVINCIA"] = df["PROVINCIA"].astype(str).str.strip().str.upper()
+    embudo.append(("En provincias de la región Piura", len(df)))
 
-    df[TARGET] = df[TARGET].fillna(df[TARGET].median())
-    df = df.dropna(subset=["COSECHA", "PRODUCCION"])
-    df = df[~((df["COSECHA"] == 0) & (df["PRODUCCION"] > 0))]
+    df = df[df[TARGET].notna()]
+    embudo.append((f"Con {TARGET} informado (sin imputar el objetivo)", len(df)))
+
     df = df[df[TARGET] > 0]
+    embudo.append((f"Con {TARGET} > 0", len(df)))
+
+    df = df.dropna(subset=["COSECHA", "PRODUCCION", "SIEMBRA"])
+    embudo.append(("Con SIEMBRA, COSECHA y PRODUCCION informadas", len(df)))
+
+    df = df[~((df["COSECHA"] == 0) & (df["PRODUCCION"] > 0))]
+    embudo.append(("Sin inconsistencias (COSECHA=0 y PRODUCCION>0)", len(df)))
+
     df = df.drop_duplicates()
+    embudo.append(("Sin duplicados exactos (muestra final de modelado)", len(df)))
 
-    n_valido = len(df)
-    print(f"[data_loader] Registros válidos finales: {n_valido:,}")
-    print(f"[data_loader] NOTA: compara este número con el 14,393 del capítulo 4.4 "
-          f"y con el 116,000 del Anexo 1 (población vs. muestra de modelado).")
+    df["MES_NUM"] = _mes_real(df).astype(int)
+    df["ANO"] = pd.to_numeric(df["ANO"], errors="coerce").astype(int)
+    df["PERIODO"] = df["ANO"] * 100 + df["MES_NUM"]
+    df["MES_IDX"] = df["ANO"] * 12 + df["MES_NUM"] - 1   # índice mensual continuo
+    for c in ("DISTRITO", "CULTIVO"):
+        df[c] = df[c].astype(str).str.strip()
 
-    # ⚠️ CORRECCIÓN (antes: sort_values(["CULTIVO","PROVINCIA","ANO","MES"])):
-    # ordenar por CULTIVO primero rompe la validación hold-out "cronológica"
-    # de final_model.py: el split 80/20 por posición terminaba dejando en el
-    # 20% de prueba a cultivos (Q-Z alfabéticamente: QUINUA, SANDIA, SOYA,
-    # TOMATE, TRIGO, YUCA, ZAPALLO...) que el modelo NUNCA vio en
-    # entrenamiento. Eso no es "no generaliza en el tiempo", es que nunca
-    # aprendió esos cultivos. Ordenar por ANO, MES primero hace que el split
-    # 80/20 sea realmente temporal (el groupby de feature_engineering para
-    # PRECIO_LAG1/MEDIA_MOVIL_3 sigue siendo correcto: no depende del orden
-    # global, solo del orden relativo dentro de cada grupo CULTIVO+PROVINCIA,
-    # que se preserva porque ANO,MES son las claves de orden principales).
-    return df.sort_values(["ANO", "MES", "CULTIVO", "PROVINCIA"]).reset_index(drop=True)
+    df = df.sort_values(["PERIODO", "CULTIVO", "PROVINCIA", "DISTRITO"]).reset_index(drop=True)
+
+    tabla = pd.DataFrame(embudo, columns=["Etapa", "Registros"])
+    tabla["Eliminados"] = (-tabla["Registros"].diff()).fillna(0).astype(int)
+    tabla.to_csv(os.path.join(OUT_TAB, "tabla_embudo_depuracion.csv"), index=False)
+
+    print("[Fase 2-3] Embudo de depuración:")
+    for _, r in tabla.iterrows():
+        print(f"   {r['Etapa']:<62} {int(r['Registros']):>9,}  (-{int(r['Eliminados']):,})")
+    return df, tabla

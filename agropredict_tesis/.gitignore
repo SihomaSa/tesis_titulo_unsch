@@ -1,38 +1,16 @@
-cd /C/D/agropredict_tesis/tesis_titulo_unsch/agropredict_tesis
-
-cat > .gitignore << 'EOF'
-# Python
 __pycache__/
 *.pyc
-*.pyo
 .venv/
 venv/
 .pytest_cache/
-
-# Data (CSV grande, no subir)
-backend/data/*.csv
-!backend/data/.gitkeep
-
-# MLflow (no subir DB ni runs)
-backend/mlruns/*
-!backend/mlruns/.gitkeep
-mlflow.db
-
-# ✅ SÍ subir estos (Railway los necesita):
-# backend/outputs/figures/*.png
-# backend/outputs/tables/*.csv
-# backend/outputs/tables/*.json
-# backend/outputs/models/*.pkl
-
-# Mantener .gitkeep
-!backend/outputs/figures/.gitkeep
-!backend/outputs/tables/.gitkeep
-!backend/outputs/models/.gitkeep
-
-# Basura del sistema
 .DS_Store
 *.log
-EOF
 
-echo "=== .gitignore corregido ==="
-cat .gitignore
+# Datos y trazas locales
+backend/data/*.csv
+!backend/data/.gitkeep
+backend/mlruns/
+backend/mlflow.db
+
+# Los resultados SÍ se versionan porque la API desplegada los necesita:
+# backend/outputs/figures, tables, models, tesis_texto

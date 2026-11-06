@@ -11,4 +11,6 @@ data/*.csv
 !data/.gitkeep
 .git/
 .env
-*.log
+*.logmlruns/
+mlflow.db
+data/*.csv

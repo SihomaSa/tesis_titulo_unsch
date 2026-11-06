@@ -1,66 +1,80 @@
 """
-feature_engineering.py — Ingeniería de características por dimensión
-(sección 3.7.2.1.C). Cada bloque está etiquetado con el problema/objetivo/
-hipótesis específica al que responde (ver config.MATRIZ_CONSISTENCIA).
+feature_engineering.py — FASE 3 (preparación): ingeniería de características
+por dimensión (X1–X4) SIN fuga de información.
+
+Regla de oro: toda variable de X4 usa únicamente precios de períodos
+ESTRICTAMENTE ANTERIORES del mismo cultivo-provincia-distrito. La versión
+anterior incluía VARIACION_PRECIO = (precio_t - precio_{t-1}) / precio_{t-1},
+que contiene la variable objetivo (precio_t): con ella el modelo "ve" la
+respuesta. Aquí se reemplaza por la variación PREVIA (t-1 vs t-2).
+
+Los valores faltantes (primer registro de cada serie) NO se imputan aquí:
+los trata el Pipeline de scikit-learn (fit solo con entrenamiento).
 """
+import json
+import os
+
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder
 
-from src.config import TARGET, USE_UBIGEO_EN_X3
+from src.config import TARGET, MATRIZ_CONSISTENCIA, OUT_TAB
+
+SERIE = ["CULTIVO", "PROVINCIA", "DISTRITO"]
+
+
+def _estacion(m):
+    # Hemisferio sur (Perú): verano dic-feb, otoño mar-may, invierno jun-ago, primavera sep-nov
+    return 0 if m in (12, 1, 2) else 1 if m in (3, 4, 5) else 2 if m in (6, 7, 8) else 3
 
 
 def build_features(df: pd.DataFrame):
-    """Genera X1-X4 y devuelve (df, FEATURES, DIMENSIONES).
-
-    FEATURES: lista plana de todas las columnas predictoras.
-    DIMENSIONES: dict {nombre_dimension: [columnas]} usado por el
-    ablation study para responder a PE-a..d / OE-a..d / H1-H4.
-    """
     df = df.copy()
-    GRUPO = ["CULTIVO", "PROVINCIA"]
 
-    # --- X1 Temporal (PE-a / OE-a / H1) ---
-    df["MES_SEN"] = np.sin(2 * np.pi * df["MES"] / 12)
-    df["MES_COS"] = np.cos(2 * np.pi * df["MES"] / 12)
-    df["ESTACION"] = df["MES"].map(
-        lambda m: 0 if m in [12, 1, 2] else 1 if m in [3, 4, 5] else 2 if m in [6, 7, 8] else 3
-    )
-    dim_x1 = ["ANO", "MES", "MES_SEN", "MES_COS", "ESTACION"]
+    # ---------------- X1 Temporal ----------------
+    df["MES_SEN"] = np.sin(2 * np.pi * df["MES_NUM"] / 12)
+    df["MES_COS"] = np.cos(2 * np.pi * df["MES_NUM"] / 12)
+    df["ESTACION"] = df["MES_NUM"].map(_estacion)
 
-    # --- X2 Productiva (PE-b / OE-b / H2) ---
-    df["RENDIMIENTO_TON_HA"] = np.where(df["COSECHA"] > 0, df["PRODUCCION"] / df["COSECHA"], 0)
-    dim_x2 = ["SIEMBRA", "COSECHA", "PRODUCCION", "RENDIMIENTO_TON_HA"]
+    # ---------------- X2 Productiva ----------------
+    df["RENDIMIENTO_TON_HA"] = np.where(df["COSECHA"] > 0, df["PRODUCCION"] / df["COSECHA"], 0.0)
 
-    # --- X3 Geográfica (PE-c / OE-c / H3) ---
-    cols_x3 = ["PROVINCIA", "DISTRITO", "CULTIVO"]
-    if USE_UBIGEO_EN_X3 and "UBIGEO" in df.columns:
-        cols_x3.append("UBIGEO")
-    for col in cols_x3:
-        le = LabelEncoder()
-        df[col + "_enc"] = le.fit_transform(df[col].astype(str))
-    dim_x3 = [c + "_enc" for c in cols_x3]
+    # ---------------- X3 Geográfica (códigos ordinales estables) ----------------
+    catalogo = {}
+    for col, base in (("PROVINCIA", "PROVINCIA"), ("DISTRITO", "DISTRITO"), ("CULTIVO", "COD_CULTIVO")):
+        llaves = sorted(df[base].astype(str).unique())
+        mapa = {k: i for i, k in enumerate(llaves)}
+        df[col + "_enc"] = df[base].astype(str).map(mapa).astype(int)
+        catalogo[base] = mapa
+    uni = df.drop_duplicates("COD_CULTIVO")
+    catalogo["NOMBRE_CULTIVO"] = dict(zip(uni["COD_CULTIVO"].astype(str), uni["CULTIVO"]))
 
-    # --- X4 Económica histórica (PE-d / OE-d / H4) ---
-    group = df.groupby(GRUPO)[TARGET]
-    df["PRECIO_LAG1"] = group.shift(1)
-    df["VARIACION_PRECIO"] = ((df[TARGET] - df["PRECIO_LAG1"]) / df["PRECIO_LAG1"].replace(0, np.nan)) * 100
-    df["MEDIA_MOVIL_3"] = group.transform(lambda x: x.shift(1).rolling(3, min_periods=1).mean())
-    median_precio = df[TARGET].median()
-    df["PRECIO_LAG1"] = df["PRECIO_LAG1"].fillna(median_precio)
-    df["VARIACION_PRECIO"] = df["VARIACION_PRECIO"].fillna(0)
-    df["MEDIA_MOVIL_3"] = df["MEDIA_MOVIL_3"].fillna(median_precio)
-    dim_x4 = ["PRECIO_LAG1", "VARIACION_PRECIO", "MEDIA_MOVIL_3"]
+    # ---------------- X4 Económica histórica (solo pasado) ----------------
+    ser = (df.groupby(SERIE + ["MES_IDX"], as_index=False)[TARGET].mean()
+             .sort_values(SERIE + ["MES_IDX"]))
+    g = ser.groupby(SERIE)
+    ser["PRECIO_LAG1"] = g[TARGET].shift(1)
+    lag2 = g[TARGET].shift(2)
+    ser["VARIACION_PRECIO_PREVIA"] = (ser["PRECIO_LAG1"] - lag2) / lag2.replace(0, np.nan) * 100
+    ser["MEDIA_MOVIL_3"] = g[TARGET].transform(lambda s: s.shift(1).rolling(3, min_periods=1).mean())
+    ser["MESES_DESDE_PRECIO_PREVIO"] = ser["MES_IDX"] - g["MES_IDX"].shift(1)
+    ser["TIENE_HISTORIAL"] = ser["PRECIO_LAG1"].notna().astype(int)
+    cols = ["PRECIO_LAG1", "VARIACION_PRECIO_PREVIA", "MEDIA_MOVIL_3",
+            "MESES_DESDE_PRECIO_PREVIO", "TIENE_HISTORIAL"]
+    df = df.merge(ser[SERIE + ["MES_IDX"] + cols], on=SERIE + ["MES_IDX"], how="left")
+    df = df.sort_values(["PERIODO", "CULTIVO", "PROVINCIA", "DISTRITO"]).reset_index(drop=True)
 
-    dimensiones = {
-        "X1_Temporal": dim_x1,
-        "X2_Productiva": dim_x2,
-        "X3_Geografica": dim_x3,
-        "X4_Economica_Historica": dim_x4,
-    }
-    features = dim_x1 + dim_x2 + dim_x3 + dim_x4
+    dimensiones = {d["clave"]: list(d["variables"]) for d in MATRIZ_CONSISTENCIA["dimensiones"]}
+    features = [f for v in dimensiones.values() for f in v]
 
-    print(f"[feature_engineering] Features totales: {len(features)} "
-          f"(X1={len(dim_x1)}, X2={len(dim_x2)}, X3={len(dim_x3)}, X4={len(dim_x4)})")
+    # Auditoría anti-fuga: ninguna variable debe reconstruir el objetivo
+    X = df[features].astype(float)
+    corr_max = X.corrwith(df[TARGET]).abs().max()
+    print(f"[Fase 3] {len(features)} variables (X1={len(dimensiones['X1_Temporal'])}, "
+          f"X2={len(dimensiones['X2_Productiva'])}, X3={len(dimensiones['X3_Geografica'])}, "
+          f"X4={len(dimensiones['X4_Economica_Historica'])}); "
+          f"sin historial previo: {(df['TIENE_HISTORIAL'] == 0).mean() * 100:.1f}% "
+          f"| |corr| máx. con el objetivo = {corr_max:.3f}")
 
-    return df, features, dimensiones
+    with open(os.path.join(OUT_TAB, "catalogo_codificacion.json"), "w", encoding="utf-8") as f:
+        json.dump(catalogo, f, ensure_ascii=False, indent=1)
+    return df, features, dimensiones, catalogo

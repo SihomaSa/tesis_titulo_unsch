@@ -1,130 +1,113 @@
 """
-main.py — Punto de entrada ÚNICO del pipeline de tesis AgroPredict.
+main.py — Punto de entrada ÚNICO. Ejecuta las 9 fases de la metodología
+(CRISP-DM + KDD adaptada a modelos predictivos; Chapman et al., 2000; Fayyad
+et al., 1996; Géron, 2023) y genera tablas, figuras, el modelo y el TEXTO de
+resultados con los números reales.
 
-Ejecuta, en orden, todo lo que necesitas para el capítulo 4:
-  1. Carga y limpieza de datos            -> src/data/data_loader.py
-  2. Ingeniería de características X1-X4  -> src/data/feature_engineering.py
-  3. Comparación de 4 modelos (OG)        -> src/models/compare_models.py
-  4. Modelo final hold-out (PG/OG/HG)     -> src/models/final_model.py
-  5. Ablation study por dimensión (H1-H4) -> src/analysis/ablation_study.py
-  6. Isolation Forest (anomalías)         -> src/analysis/anomaly_detection.py
-  7. Reporte de contrastación de hipótesis-> src/analysis/hypothesis_report.py
-
-Cada corrida queda registrada en MLflow (backend/mlruns/). Para ver y
-exportar las figuras a tu tesis:
-
-    mlflow ui --backend-store-uri backend/mlruns
-
-y abre http://localhost:5000 -> entra a cada run -> pestaña "Artifacts".
-
-Uso:
     cd backend
     pip install -r requirements.txt
+    # coloca tu CSV en data/dataset_agricola.csv
     python main.py
+
+    python main.py --rapido      # prueba de humo (pocos minutos, menos búsqueda)
+    python main.py --datos RUTA  # otro CSV
 """
-
-# 🔧 CAMBIO 1: Forzar backend Agg ANTES de cualquier import de matplotlib
+import argparse
 import os
-os.environ.setdefault("MPLBACKEND", "Agg")  # <- esto evita el crash de Tkinter
-
-import matplotlib
-matplotlib.use("Agg")  # doble seguridad
-
 import sys
 
+os.environ.setdefault("MPLBACKEND", "Agg")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src.config import setup_mlflow, MATRIZ_CONSISTENCIA
+from src import tracking
+from src.analysis import anomalias, segmentos
+from src.analysis.ablation_study import run_ablation
+from src.analysis.interpretabilidad import interpretar
+from src.config import DATA_PATH, MATRIZ_CONSISTENCIA, TARGET
 from src.data.data_loader import load_and_clean
 from src.data.feature_engineering import build_features
-from src.models.compare_models import compare_models
-from src.models.final_model import train_final_model
-from src.analysis.ablation_study import run_ablation
-from src.analysis.anomaly_detection import detect_anomalies
-from src.analysis.rendimiento_provincial import rendimiento_por_provincia
-from src.analysis.rendimiento_por_frecuencia_cultivo import rendimiento_por_frecuencia
-from src.analysis.hypothesis_report import build_report
+from src.data.splits import split_cronologico
+from src.models.entrenamiento import entrenar_y_comparar
+from src.models.pipelines import NOMBRES
+from src.reporting.texto_tesis import generar_texto
+from src.visualization import figuras as fg
+import numpy as np
 
 
 def main():
-    print("=" * 80)
-    print("🚀 PIPELINE DE TESIS — AGROPREDICT (Piura, 2025)")
-    print("=" * 80)
-    print(f"\nPROBLEMA GENERAL:\n{MATRIZ_CONSISTENCIA['problema_general']}\n")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--rapido", action="store_true", help="prueba de humo con menos iteraciones")
+    ap.add_argument("--datos", default=DATA_PATH)
+    a = ap.parse_args()
 
-    setup_mlflow()
+    print("=" * 78)
+    print("AGROPREDICT — Metodología predictiva en 9 fases (CRISP-DM + KDD)")
+    print("=" * 78)
+    if not os.path.exists(a.datos):
+        sys.exit(f"No se encontró el dataset en {a.datos}. Copia tu CSV a backend/data/dataset_agricola.csv")
+    tracking.setup()
 
-    # 1-2. Datos y features
-    df = load_and_clean()
-    df, features, dimensiones = build_features(df)
-    X = df[features].fillna(0)
-    y = df["PRECIO_CHACRA"]
+    print(f"\n[Fase 1] Problema: {MATRIZ_CONSISTENCIA['problema_general']}")
+    print(f"[Fase 1] Variable objetivo: {TARGET} (regresión supervisada)")
 
-    # 3. Comparación de modelos (Objetivo General)
-    print("\n" + "-" * 80)
-    print("[OBJETIVO GENERAL] Comparación de técnicas de Machine Learning")
-    print("-" * 80)
-    resultados_modelos, tss = compare_models(X, y)
+    df, embudo = load_and_clean(a.datos)                                   # Fases 2-3
+    df, features, dimensiones, catalogo = build_features(df)               # Fase 3
+    X = df[features].astype(float)
+    y = df[TARGET].astype(float)
+    idx_tr, idx_va, idx_te, info_split = split_cronologico(df)             # Fase 3
 
-    # 4. Modelo final hold-out (Problema/Objetivo/Hipótesis General)
-    print("\n" + "-" * 80)
-    print("[HIPÓTESIS GENERAL] Modelo final hold-out 80/20")
-    print("-" * 80)
-    final = train_final_model(X, y, features, dimensiones)
+    res = entrenar_y_comparar(X, y, idx_tr, idx_va, idx_te, features, catalogo, info_split, a.rapido)  # Fases 4-7
+    rf_params = res["mejores_params"]["rf"]
+    idx_dev = np.concatenate([idx_tr, idx_va])
 
-    # 5. Ablation study (Hipótesis específicas H1-H4)
-    print("\n" + "-" * 80)
-    print("[HIPÓTESIS ESPECÍFICAS H1-H4] Ablation study por dimensión")
-    print("-" * 80)
-    ablation_resultados = run_ablation(X, y, features, dimensiones, tss)
+    print("\n[Fase 7] Contraste de hipótesis (ablation + Wilcoxon + Holm)...")
+    abl = run_ablation(X, y, idx_dev, features, dimensiones, rf_params, a.rapido)
 
-    # 6. Anomalías
-    print("\n" + "-" * 80)
-    print("[INSTRUMENTO] Isolation Forest — detección de anomalías")
-    print("-" * 80)
-    anomaly_info = detect_anomalies(df, X)
+    print("\n[Fase 8] Interpretabilidad (SHAP + permutación agrupada)...")
+    interp = interpretar(res, X, y, idx_va, idx_te, features, dimensiones)
 
-    # 6b. Rendimiento por provincia (objetivo específico c / dimensión geográfica)
-    print("\n" + "-" * 80)
-    print("[OBJETIVO ESPECÍFICO c] Rendimiento del modelo final por provincia")
-    print("-" * 80)
-    tabla_provincial = rendimiento_por_provincia(
-        df, X, y, final["model"], final["split_idx"]
-    )
+    print("\n[Fase 9] Validación final y análisis complementarios...")
+    df_te, y_te = df.iloc[idx_te], y.iloc[idx_te]
+    t_prov = segmentos.por_provincia(df_te, y_te, res["pred_test"])
+    t_seg = segmentos.por_segmento_precio(y_te, res["pred_test"])
+    anom = anomalias.detectar(df, X)
 
-    # 6c. Rendimiento por frecuencia de cultivo (comunes vs. alto valor)
-    print("\n" + "-" * 80)
-    print("[LIMITACIÓN DETECTADA] Rendimiento por frecuencia de cultivo")
-    print("-" * 80)
-    resumen_frecuencia = rendimiento_por_frecuencia(
-        df, X, y, final["model"], final["split_idx"]
-    )
+    # Figuras
+    fg.fig_flujo_metodologico()
+    fg.fig_dimensiones(dimensiones)
+    fg.fig_comparacion(res["tabla_val"], res["tabla_test"])
+    fg.fig_r2_folds(res["r2_folds"], NOMBRES)
+    fg.fig_real_vs_predicho(y_te.to_numpy(), res["pred_test"], res["nombre_sel"], res["filas_test"][res["nombre_sel"]]["R2"])
+    fg.fig_importancia(interp["imp_dim"], interp["shap"]["por_dimension"] if interp["shap"] else None, interp["permutacion"])
+    fg.fig_ablation(abl["tabla"])
+    fg.fig_provincias(t_prov)
+    fg.fig_anomalias(df, anom["pred"], TARGET)
+    if interp["shap"]:
+        fg.fig_shap_resumen(interp["shap"])
 
-    # 7. Reporte final de contrastación de hipótesis
-    print("\n" + "-" * 80)
-    print("[REPORTE] Contrastación de hipótesis (capítulo 4.4)")
-    print("-" * 80)
-    reporte = build_report(
-        n_valido=len(df),
-        final_metrics=final["metrics"],
-        ablation_resultados=ablation_resultados,
-        importancia_por_dimension=final["importancia_por_dimension"],
-        anomaly_info=anomaly_info,
-        modelo_seleccionado=final["modelo_seleccionado"],
-        metrics_por_modelo=final["metrics_por_modelo"],
-        resumen_frecuencia_cultivo=resumen_frecuencia,
-    )
+    rutas = generar_texto(df=df, embudo=embudo, info_split=info_split, res=res, abl=abl, interp=interp,
+                          t_prov=t_prov, t_seg=t_seg, anom=anom, features=features, dimensiones=dimensiones,
+                          rapido=a.rapido)
+    # copia las figuras que usa el dashboard al frontend (si existe la carpeta)
+    import shutil
+    destino = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "assets", "figures")
+    if os.path.isdir(os.path.dirname(destino)):
+        os.makedirs(destino, exist_ok=True)
+        for n in ("figura_comparacion_modelos_prueba.png", "figura_ablation_por_dimension.png",
+                  "figura_importancia_por_dimension.png", "figura_real_vs_predicho.png"):
+            origen = os.path.join(os.path.dirname(os.path.abspath(__file__)), "outputs", "figures", n)
+            if os.path.exists(origen):
+                shutil.copy(origen, destino)
 
-    print("\n" + "=" * 80)
-    print("✅ PIPELINE COMPLETADO")
-    print(f"   HG (umbral oficial 0.85): {reporte['hipotesis_general']['estado_vs_umbral_OFICIAL_0.85']}")
-    for h in reporte["hipotesis_especificas"]:
-        print(f"   {h['codigo']}: Δ={h['diferencia_R2']:.4f} p={h['p_valor']:.4f} "
-              f"({h['significativa_wilcoxon']})")
-    print("\n📁 Tablas: backend/outputs/tables/")
-    print("📁 Figuras: backend/outputs/figures/")
-    print("📁 MLflow: mlflow ui --backend-store-uri backend/mlruns")
-    print("=" * 80)
+    print("\n" + "=" * 78)
+    print("LISTO. Revisa:")
+    print("  backend/outputs/tesis_texto/   -> texto de resultados/conclusiones listo para pegar en Word")
+    print("  backend/outputs/tables/        -> todas las tablas (CSV)")
+    print("  backend/outputs/figures/       -> figuras PNG 300 dpi")
+    print("  backend/outputs/models/        -> modelo_final.pkl (lo usa la API)")
+    for r in rutas:
+        print("   ·", r)
+    print("=" * 78)
 
 
 if __name__ == "__main__":

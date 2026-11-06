@@ -5,8 +5,7 @@ const API_BASE_URL = String(window.API_BASE_URL ?? "http://localhost:8000").repl
 
 // Umbrales de R² (espejo de src/config.py)
 const UMBRAL_OFICIAL = 0.85;
-const UMBRAL_REFERENCIA = 0.75;
-const N_SPLITS_TSS = 6;
+let N_SPLITS_TSS = 10; // se actualiza con el valor real del reporte
 
 // Colores por dimensión
 const DIM_COLORS = { X1: "#1A5276", X2: "#1B6B4A", X3: "#C4960A", X4: "#C0392B" };
@@ -19,102 +18,17 @@ const DIM_NOMBRES = {
 
 const COLUMN_LABELS = {
   Modelo: "Modelo",
-  R2_TSS_media: "R² medio (TSS)",
-  R2_TSS_std: "Desv. estándar R²",
-  MAE_TSS: "MAE",
-  RMSE_TSS: "RMSE",
+  R2: "R² (prueba)",
+  MAE: "MAE (S/ por kg)",
+  RMSE: "RMSE (S/ por kg)",
+  MAPE: "MAPE (%)",
+  p_holm: "p-valor (Holm)",
   Dimension: "Dimensión",
   R2_sin_dim: "R² sin la dimensión",
   R2_completo: "R² modelo completo",
   Diferencia_R2: "ΔR²",
   p_valor: "p-valor (Wilcoxon)",
   Significativa_estadistica: "Significativa",
-};
-
-// ============================================================
-// MAPEO nombre → código del LabelEncoder
-// Orden alfabético (así los asigna sklearn.preprocessing.LabelEncoder)
-// Si tu backend imprimió otro orden, ajusta los números aquí.
-// ============================================================
-
-// Provincias ordenadas alfabéticamente (dataset_agricola.csv):
-// AYABACA, HUANCABAMBA, MORROPON, PAITA, PIURA, SECHURA, SULLANA, TALARA
-const PROVINCIA_A_CODIGO = {
-  "AYABACA":     0,
-  "HUANCABAMBA": 1,
-  "MORROPON":    2,
-  "PAITA":       3,
-  "PIURA":       4,
-  "SECHURA":     5,
-  "SULLANA":     6,
-  "TALARA":      7,
-};
-
-// Distritos ordenados alfabéticamente (todos los que aparecen en el dataset).
-// ⚠️ Este es el orden GLOBAL (no por provincia) que genera LabelEncoder.
-// Si tu encoder fue entrenado con un subconjunto distinto, ajusta.
-const DISTRITO_A_CODIGO = {
-  "AMOTAPE":                    0,
-  "ARENAL":                     1,
-  "AYABACA":                    2,
-  "BELLAVISTA DE LA UNION":     3,
-  "BERNAL":                     4,
-  "BUENOS AIRES":               5,
-  "CANCHAQUE":                  6,
-  "CASTILLA":                   7,
-  "CATACAOS":                   8,
-  "CHALACO":                    9,
-  "CHULUCANAS":                10,
-  "COLAN":                     11,
-  "CRISTO NOS VALGA":          12,
-  "CURA MORI":                 13,
-  "EL ALTO":                   14,
-  "EL CARMEN DE LA FRONTERA":  15,
-  "EL TALLAN":                 16,
-  "FRIAS":                     17,
-  "HUANCABAMBA":               18,
-  "HUARMACA":                  19,
-  "IGNACIO ESCUDERO":          20,
-  "JILILI":                    21,
-  "LA ARENA":                  22,
-  "LA BREA":                   23,
-  "LA HUACA":                  24,
-  "LA MATANZA":                25,
-  "LA UNION":                  26,
-  "LAGUNAS":                   27,
-  "LALAQUIZ":                  28,
-  "LAS LOMAS":                 29,
-  "LOBITOS":                   30,
-  "LOS ORGANOS":               31,
-  "MANCORA":                   32,
-  "MARCAVELICA":               33,
-  "MIGUEL CHECA":              34,
-  "MONTERO":                   35,
-  "MORROPON":                  36,
-  "PACAIPAMPA":                37,
-  "PAIMAS":                    38,
-  "PAITA":                     39,
-  "PARIÑAS":                   40,
-  "PIURA":                     41,
-  "QUERECOTILLO":              42,
-  "RINCONADA LLICUAR":         43,
-  "SALITRAL":                  44,
-  "SAN JUAN DE BIGOTE":        45,
-  "SAN MIGUEL DE EL FAIQUE":   46,
-  "SANTA CATALINA DE MOSSA":   47,
-  "SANTO DOMINGO":             48,
-  "SAPILLICA":                 49,
-  "SECHURA":                   50,
-  "SICCHEZ":                   51,
-  "SONDOR":                    52,
-  "SONDORILLO":                53,
-  "SULLANA":                   54,
-  "SUYO":                      55,
-  "TAMARINDO":                 56,
-  "TAMBO GRANDE":              57,
-  "VICE":                      58,
-  "VICHAYAL":                  59,
-  "YAMANGO":                   60,
 };
 
 // Distritos disponibles por provincia (para el filtro dinámico del <select>)
@@ -404,13 +318,13 @@ async function loadModelComparison() {
       return;
     }
 
-    const mejor = Math.max(...rows.map((r) => Number(r.R2_TSS_media)));
+    const mejor = Math.max(...rows.map((r) => Number(r.R2)));
     renderTable("tabla-modelos", rows, {
-      mejorFila: (r) => Number(r.R2_TSS_media) === mejor,
+      mejorFila: (r) => Number(r.R2) === mejor,
       celda: (col, r, i) =>
         col === "Modelo"
           ? `<span class="dot" style="background:${colorModelo(r.Modelo, i)}"></span>${esc(r.Modelo)}` +
-            (Number(r.R2_TSS_media) === mejor ? '<span class="badge best">Mayor R²</span>' : "")
+            (Number(r.R2) === mejor ? '<span class="badge best">Mayor R²</span>' : "")
           : null,
     });
 
@@ -423,8 +337,8 @@ async function loadModelComparison() {
       data: {
         labels: rows.map((r) => r.Modelo),
         datasets: [{
-          label: "R² (TSS, media)",
-          data: rows.map((r) => Number(r.R2_TSS_media)),
+          label: "R² (conjunto de prueba)",
+          data: rows.map((r) => Number(r.R2)),
           backgroundColor: rows.map((r, i) => colorModelo(r.Modelo, i)),
           borderRadius: 4,
           maxBarThickness: 34,
@@ -519,17 +433,14 @@ function renderHipotesisGeneral(r) {
     normalizarEstado(buscarValorPorPatron(hg, /oficial/i)) ??
     normalizarEstado(buscarValorPorPatron(hg, /umbral.*0[.,]?85/i)) ??
     calc(UMBRAL_OFICIAL);
-  const estadoRef =
-    normalizarEstado(buscarValorPorPatron(hg, /umbral.*0[.,]?75/i)) ?? calc(UMBRAL_REFERENCIA);
 
   const ancho = isNum(r2) ? Math.max(0, Math.min(1, r2)) * 100 : 0;
-  const nivel = !isNum(r2) ? "" : r2 >= UMBRAL_OFICIAL ? "" : r2 >= UMBRAL_REFERENCIA ? "mid" : "low";
+  const nivel = !isNum(r2) ? "" : r2 >= UMBRAL_OFICIAL ? "" : "low";
 
   const track = isNum(r2) ? `
     <div class="track-wrap">
       <div class="track" role="img" aria-label="R² final ${fmt(r2)} sobre una escala de 0 a 1">
         <div class="track-fill ${nivel}" style="width:${ancho}%"></div>
-        <div class="tick ref" style="left:${UMBRAL_REFERENCIA * 100}%"><span>${UMBRAL_REFERENCIA.toFixed(2)}</span></div>
         <div class="tick off" style="left:${UMBRAL_OFICIAL * 100}%"><span>${UMBRAL_OFICIAL.toFixed(2)}</span></div>
       </div>
     </div>` : "";
@@ -547,13 +458,12 @@ function renderHipotesisGeneral(r) {
       <div class="verdict-main">
         <div class="score">
           <span class="score-num">${fmt(r2)}</span>
-          <span class="score-label">R² final (hold-out)</span>
+          <span class="score-label">R² en prueba (hold-out)</span>
         </div>
         ${track}
       </div>
       <ul class="verdict-status">
         <li>${chipEstado(estadoOficial)} Umbral oficial ${UMBRAL_OFICIAL.toFixed(2)} (cap. 3)</li>
-        <li>${chipEstado(estadoRef)} Referencia ${UMBRAL_REFERENCIA.toFixed(2)} (cap. 4)</li>
       </ul>
       ${meta.length ? `<dl class="verdict-meta">${meta.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>` : ""}
       ${hg.evidencia ? `<p class="verdict-evidence"><b>Evidencia:</b> ${esc(hg.evidencia)}</p>` : ""}
@@ -586,9 +496,10 @@ function renderHipotesisEspecificas(r) {
       </article>`;
   }).join("");
 
-  const pMin = 2 / Math.pow(2, N_SPLITS_TSS);
+  if (isNum(Number(r.n_splits_ablation))) N_SPLITS_TSS = Number(r.n_splits_ablation);
+  const pMin = 1 / Math.pow(2, N_SPLITS_TSS);
   $("he-note").textContent = lista.length
-    ? `Prueba de Wilcoxon sobre ${N_SPLITS_TSS} particiones temporales: el menor p-valor posible es ${pMin.toFixed(4)}.`
+    ? `Prueba de Wilcoxon unilateral con corrección de Holm sobre ${N_SPLITS_TSS} particiones temporales: el menor p-valor sin corregir es ${pMin.toFixed(4)}.`
     : "";
 }
 
@@ -688,25 +599,6 @@ function setupPredictForm() {
 
     const raw = Object.fromEntries(new FormData(form).entries());
 
-    // Traducir nombre → código del LabelEncoder
-    const provinciaEnc = PROVINCIA_A_CODIGO[raw.PROVINCIA];
-    const distritoEnc  = DISTRITO_A_CODIGO[raw.DISTRITO];
-    const cultivoEnc   = Number(raw.CULTIVO);
-
-    // Validaciones defensivas
-    if (provinciaEnc === undefined) {
-      resultBox.innerHTML = `<p class="result-error" role="alert"><b>Provincia no reconocida:</b> "${esc(raw.PROVINCIA)}". Revisa el mapeo del LabelEncoder en <code>app.js</code>.</p>`;
-      return;
-    }
-    if (distritoEnc === undefined) {
-      resultBox.innerHTML = `<p class="result-error" role="alert"><b>Distrito no reconocido:</b> "${esc(raw.DISTRITO)}". Revisa el mapeo del LabelEncoder en <code>app.js</code>.</p>`;
-      return;
-    }
-    if (!Number.isFinite(cultivoEnc)) {
-      resultBox.innerHTML = `<p class="result-error" role="alert"><b>Cultivo no reconocido:</b> "${esc(raw.CULTIVO)}".</p>`;
-      return;
-    }
-
     // Payload con los nombres que el backend FastAPI espera
     const data = {
       ANO:            Number(raw.ANO),
@@ -716,9 +608,9 @@ function setupPredictForm() {
       PRODUCCION:     Number(raw.PRODUCCION),
       PRECIO_LAG1:    Number(raw.PRECIO_LAG1),
       MEDIA_MOVIL_3:  Number(raw.MEDIA_MOVIL_3),
-      PROVINCIA_enc:  provinciaEnc,
-      DISTRITO_enc:   distritoEnc,
-      CULTIVO_enc:    cultivoEnc,
+      PROVINCIA:      raw.PROVINCIA,
+      DISTRITO:       raw.DISTRITO,
+      COD_CULTIVO:    Number(raw.CULTIVO),
     };
 
     submitBtn.disabled = true;
@@ -749,6 +641,7 @@ function setupPredictForm() {
           <p class="result-label">Precio estimado</p>
           <p class="result-price">S/ ${precio.toFixed(3)}<span class="unit"> por kg</span></p>
           ${deltaHtml}
+          ${Array.isArray(json.intervalo_90) ? `<p class="result-label">Intervalo del 90%: S/ ${json.intervalo_90[0].toFixed(2)} – S/ ${json.intervalo_90[1].toFixed(2)}</p>` : ""}
           <dl class="result-compare">
             <div><dt>Mes anterior</dt><dd>S/ ${fmt(anterior, 3)}</dd></div>
             <div><dt>Media móvil 3 meses</dt><dd>S/ ${fmt(data.MEDIA_MOVIL_3, 3)}</dd></div>

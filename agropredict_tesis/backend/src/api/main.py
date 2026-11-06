@@ -1,148 +1,150 @@
 """
-src/api/main.py — API REST que expone al frontend:
-  - la Matriz de Consistencia (para mostrarla en el dashboard)
-  - los resultados ya calculados por backend/main.py (tablas + reporte)
-  - un endpoint /predict que usa el modelo final guardado
+API REST de AgroPredict (FASE 9: despliegue).
 
-Correr (desde la carpeta backend/):
+    cd backend
     uvicorn src.api.main:app --reload --port 8000
 
-Requiere haber corrido antes `python main.py` al menos una vez, para que
-existan outputs/models/random_forest_final.pkl y outputs/tables/*.csv.
+Requiere haber ejecutado antes `python main.py` (genera outputs/models/modelo_final.pkl
+y las tablas). Entradas del formulario: nombres de provincia y distrito y el
+código de cultivo; la API traduce con el catálogo guardado junto al modelo,
+así que el frontend ya no necesita mapas de codificación escritos a mano.
 """
 import json
 import os
 import sys
 
 import joblib
+import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from src.config import MATRIZ_CONSISTENCIA, OUT_TAB, OUT_MOD  # noqa: E402
+from src.config import MATRIZ_CONSISTENCIA, OUT_MOD, OUT_TAB  # noqa: E402
 
-app = FastAPI(
-    title="AgroPredict API",
-    description="API de predicción de precios agrícolas — Piura, 2025 (tesis)",
-    version="1.0.0",
-)
+app = FastAPI(title="AgroPredict API", version="2.0.0",
+              description="Predicción de precios agrícolas — Piura, 2025 (tesis UNSCH)")
 
-# En producción, reemplaza "*" por el dominio real de tu frontend (Firebase Hosting, etc.)
 ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS",
-    "https://agropredict-tesis.web.app,https://agropredict-tesis.firebaseapp.com,http://localhost:5500,http://127.0.0.1:5500"
+    "https://agropredict-tesis.web.app,https://agropredict-tesis.firebaseapp.com,"
+    "http://localhost:5500,http://127.0.0.1:5500,http://localhost:8080",
 ).split(",")
+app.add_middleware(CORSMiddleware, allow_origins=ALLOWED_ORIGINS, allow_credentials=True,
+                   allow_methods=["*"], allow_headers=["*"])
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-_model_cache = {}
+_cache = {}
 
 
-def _load_model():
-    if "model" not in _model_cache:
-        path = os.path.join(OUT_MOD, "random_forest_final.pkl")
-        if not os.path.exists(path):
-            raise HTTPException(
-                status_code=503,
-                detail="Modelo no encontrado. Corre 'python main.py' primero desde backend/.",
-            )
-        bundle = joblib.load(path)
-        _model_cache["model"] = bundle["model"]
-        _model_cache["features"] = bundle["features"]
-    return _model_cache["model"], _model_cache["features"]
+def _bundle():
+    if "b" not in _cache:
+        ruta = os.path.join(OUT_MOD, "modelo_final.pkl")
+        if not os.path.exists(ruta):
+            raise HTTPException(503, "Modelo no encontrado. Ejecuta 'python main.py' desde backend/.")
+        _cache["b"] = joblib.load(ruta)
+    return _cache["b"]
 
 
-def _read_csv_safe(filename):
-    path = os.path.join(OUT_TAB, filename)
-    if not os.path.exists(path):
-        return []
-    return pd.read_csv(path).to_dict(orient="records")
-
-
-def _read_json_safe(filename):
-    path = os.path.join(OUT_TAB, filename)
-    if not os.path.exists(path):
-        return None
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-# ------------------------------------------------------------------
-# 1. Matriz de consistencia — para pintar el PG/PE/OG/OE/HG/HE en el frontend
-# ------------------------------------------------------------------
-@app.get("/api/consistency-matrix")
-def get_consistency_matrix():
-    return MATRIZ_CONSISTENCIA
-
-
-# ------------------------------------------------------------------
-# 2. Resultados ya calculados (tablas del capítulo 4)
-# ------------------------------------------------------------------
-@app.get("/api/results/model-comparison")
-def get_model_comparison():
-    return _read_csv_safe("tabla_4.1_comparacion_modelos.csv")
-
-
-@app.get("/api/results/ablation")
-def get_ablation():
-    return _read_csv_safe("tabla_4.4_wilcoxon_hipotesis.csv")
-
-
-@app.get("/api/results/hypothesis-report")
-def get_hypothesis_report():
-    reporte = _read_json_safe("reporte_contrastacion_hipotesis.json")
-    if reporte is None:
-        raise HTTPException(status_code=404, detail="Aún no se generó el reporte. Corre main.py.")
-    return reporte
-
-
-@app.get("/api/results/anomalies-sample")
-def get_anomalies_sample():
-    return _read_csv_safe("muestra_50_anomalias_revision_manual.csv")
-
-
-# ------------------------------------------------------------------
-# 3. Predicción — para el formulario del frontend
-# ------------------------------------------------------------------
-class PrediccionInput(BaseModel):
-    ANO: int
-    MES: int
-    SIEMBRA: float
-    COSECHA: float
-    PRODUCCION: float
-    PROVINCIA_enc: int
-    DISTRITO_enc: int
-    CULTIVO_enc: int
-    PRECIO_LAG1: float
-    VARIACION_PRECIO: float = 0.0
-    MEDIA_MOVIL_3: float
-
-
-@app.post("/api/predict")
-def predict(payload: PrediccionInput):
-    import numpy as np
-
-    model, features = _load_model()
-    data = payload.dict()
-    data["MES_SEN"] = float(np.sin(2 * np.pi * data["MES"] / 12))
-    data["MES_COS"] = float(np.cos(2 * np.pi * data["MES"] / 12))
-    m = data["MES"]
-    data["ESTACION"] = 0 if m in [12, 1, 2] else 1 if m in [3, 4, 5] else 2 if m in [6, 7, 8] else 3
-    data["RENDIMIENTO_TON_HA"] = data["PRODUCCION"] / data["COSECHA"] if data["COSECHA"] > 0 else 0
-
-    row = pd.DataFrame([{f: data.get(f, 0) for f in features}])
-    pred = float(model.predict(row)[0])
-    return {"precio_predicho_S_por_kg": round(pred, 3)}
+def _csv(nombre):
+    ruta = os.path.join(OUT_TAB, nombre)
+    return pd.read_csv(ruta).replace({np.nan: None}).to_dict(orient="records") if os.path.exists(ruta) else []
 
 
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/consistency-matrix")
+def matriz():
+    return MATRIZ_CONSISTENCIA
+
+
+@app.get("/api/results/model-comparison")
+def comparacion():
+    return _csv("tabla_resultados_prueba.csv")
+
+
+@app.get("/api/results/validation")
+def validacion():
+    return _csv("tabla_comparacion_validacion.csv")
+
+
+@app.get("/api/results/ablation")
+def ablation():
+    cols = ["Dimension", "R2_sin_dim", "R2_completo", "Diferencia_R2", "p_valor", "p_holm", "Significativa_estadistica"]
+    return [{c: r.get(c) for c in cols} for r in _csv("tabla_ablation_wilcoxon.csv")]
+
+
+@app.get("/api/results/hypothesis-report")
+def reporte():
+    ruta = os.path.join(OUT_TAB, "reporte_contrastacion_hipotesis.json")
+    if not os.path.exists(ruta):
+        raise HTTPException(404, "Aún no se generó el reporte. Ejecuta main.py.")
+    with open(ruta, encoding="utf-8") as f:
+        return json.load(f)
+
+
+@app.get("/api/results/anomalies-sample")
+def anomalias():
+    return _csv("muestra_50_anomalias_revision_manual.csv")
+
+
+@app.get("/api/catalog")
+def catalogo():
+    ruta = os.path.join(OUT_TAB, "catalogo_codificacion.json")
+    if not os.path.exists(ruta):
+        raise HTTPException(404, "Catálogo no generado. Ejecuta main.py.")
+    with open(ruta, encoding="utf-8") as f:
+        return json.load(f)
+
+
+class Entrada(BaseModel):
+    ANO: int = Field(ge=2000, le=2100)
+    MES: int = Field(ge=1, le=12)
+    SIEMBRA: float = Field(ge=0)
+    COSECHA: float = Field(ge=0)
+    PRODUCCION: float = Field(ge=0)
+    PROVINCIA: str
+    DISTRITO: str
+    COD_CULTIVO: int
+    PRECIO_LAG1: float = Field(gt=0, description="último precio observado (S/ por kg)")
+    MEDIA_MOVIL_3: float | None = Field(default=None, description="media de los últimos 3 precios; si falta se usa PRECIO_LAG1")
+    PRECIO_LAG2: float | None = Field(default=None, description="penúltimo precio observado (opcional)")
+    MESES_DESDE_PRECIO_PREVIO: float = 1.0
+
+
+@app.post("/api/predict")
+def predecir(p: Entrada):
+    b = _bundle()
+    cat = b["catalogo"]
+    prov, dist, cod = p.PROVINCIA.strip().upper(), p.DISTRITO.strip().upper(), str(p.COD_CULTIVO)
+    for nombre, valor, clave in (("Provincia", prov, "PROVINCIA"), ("Distrito", dist, "DISTRITO"), ("Cultivo", cod, "COD_CULTIVO")):
+        if valor not in cat[clave]:
+            raise HTTPException(422, f"{nombre} '{valor}' no existe en los datos de entrenamiento.")
+    if p.COSECHA > p.SIEMBRA:
+        raise HTTPException(422, "COSECHA no puede superar a SIEMBRA.")
+    mes = p.MES
+    fila = {
+        "ANO": p.ANO, "MES_NUM": mes,
+        "MES_SEN": float(np.sin(2 * np.pi * mes / 12)), "MES_COS": float(np.cos(2 * np.pi * mes / 12)),
+        "ESTACION": 0 if mes in (12, 1, 2) else 1 if mes in (3, 4, 5) else 2 if mes in (6, 7, 8) else 3,
+        "SIEMBRA": p.SIEMBRA, "COSECHA": p.COSECHA, "PRODUCCION": p.PRODUCCION,
+        "RENDIMIENTO_TON_HA": p.PRODUCCION / p.COSECHA if p.COSECHA > 0 else 0.0,
+        "PROVINCIA_enc": cat["PROVINCIA"][prov], "DISTRITO_enc": cat["DISTRITO"][dist],
+        "CULTIVO_enc": cat["COD_CULTIVO"][cod],
+        "PRECIO_LAG1": p.PRECIO_LAG1,
+        "MEDIA_MOVIL_3": p.MEDIA_MOVIL_3 if p.MEDIA_MOVIL_3 is not None else p.PRECIO_LAG1,
+        "VARIACION_PRECIO_PREVIA": ((p.PRECIO_LAG1 - p.PRECIO_LAG2) / p.PRECIO_LAG2 * 100) if p.PRECIO_LAG2 else np.nan,
+        "MESES_DESDE_PRECIO_PREVIO": p.MESES_DESDE_PRECIO_PREVIO, "TIENE_HISTORIAL": 1,
+    }
+    X = pd.DataFrame([{f: fila.get(f, np.nan) for f in b["features"]}])
+    precio = float(b["model"].predict(X)[0])
+    q = b["q90_abs"]
+    return {
+        "precio_predicho_S_por_kg": round(precio, 3),
+        "intervalo_90": [round(max(precio - q, 0.0), 3), round(precio + q, 3)],
+        "modelo": b["nombre"],
+        "nota_intervalo": "Intervalo empírico: cubre ~90% de los errores absolutos observados en validación.",
+    }
