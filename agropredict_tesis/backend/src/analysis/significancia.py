@@ -170,3 +170,25 @@ def robustez_significancia(periodo, y, pred_modelo, refs: dict, nombre_modelo):
                   IC_excluye_0_en=("IC_excluye_0", lambda s: f"{(s == 'Sí').sum()}/{len(s)}")).reset_index())
     print(res.round(4).to_string(index=False))
     return t
+def reporte_prueba_con_historial(periodo_te, y_te, pred_final, nombre_final, refs, tiene_hist):
+    """Misma comparación de reporte_prueba, pero SOLO con registros que tienen precio previo real.
+    En los registros sin historial la 'persistencia' es una mediana de respaldo, no un baseline real."""
+    m = np.asarray(tiene_hist).astype(bool)
+    per, y, pf = np.asarray(periodo_te)[m], np.asarray(y_te)[m], np.asarray(pred_final)[m]
+    refs_m = {k: np.asarray(v)[m] for k, v in refs.items()}
+
+    t = comparar_pronosticos(per, y, pf, refs_m, nombre_final)
+    t.insert(0, "Subconjunto", f"Solo con historial previo (n={int(m.sum())})")
+    t.to_csv(os.path.join(OUT_TAB, "tabla_significancia_vs_baseline_con_historial.csv"), index=False)
+
+    r2, lo, hi, L, n = ic_r2_bloques(per, y, pf)
+    pd.DataFrame([{"Modelo": nombre_final, "Subconjunto": "Solo con historial previo",
+                   "n_registros": int(m.sum()), "R2": r2, "IC95_inf": lo, "IC95_sup": hi,
+                   "n_meses": n}]).to_csv(
+        os.path.join(OUT_TAB, "tabla_ic_r2_con_historial.csv"), index=False)
+
+    print(f"[Significancia | solo con historial] n={int(m.sum())}  R²={r2:.4f}  IC95% [{lo:.4f}, {hi:.4f}]")
+    for _, r in t.iterrows():
+        print(f"[Significancia | solo con historial] vs {r['Referencia']:<20} ΔMAE%={r['Reduccion_MAE_pct']:+.1f} "
+              f"| IC95 [{r['IC95_inf']:+.4f}, {r['IC95_sup']:+.4f}] | p_Holm={r['p_holm']:.3f}")
+    return t

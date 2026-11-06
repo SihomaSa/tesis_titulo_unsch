@@ -40,7 +40,7 @@ from src import tracking
 from src.analysis import anomalias, segmentos
 from src.analysis.ablation_study import run_ablation
 from src.analysis.interpretabilidad import interpretar
-from src.analysis import depuracion_sesgo, documentacion, robustez, significancia
+from src.analysis import cierre_observaciones,depuracion_sesgo, documentacion, robustez, significancia
 from src.models.evaluacion import baseline_media_movil, baseline_persistencia
 from src.config import DATA_PATH, MATRIZ_CONSISTENCIA, TARGET
 from src.data.data_loader import load_and_clean
@@ -108,9 +108,14 @@ def main():
                 refs[NOMBRES[k]] = m_.predict(X_te)
         print("\n[Obs.1,3] Significancia frente a baselines y otros modelos (pérdidas pareadas por mes, HAC, bloques)")
         significancia.reporte_prueba(per_te, y_te_.to_numpy(), res["pred_test"], res["nombre_sel"], refs)
+        print("\n[Obs.3] Significancia SOLO con registros que tienen precio previo real (baseline de persistencia válido)")
+        significancia.reporte_prueba_con_historial(per_te, y_te_.to_numpy(), res["pred_test"], res["nombre_sel"], refs,
+                                                   tiene_hist=df_te["TIENE_HISTORIAL"].to_numpy())
         print("\n[Obs.3] Robustez de la significancia: pérdida absoluta y cuadrática, L-HAC, bloque, prueba de signos")
         significancia.robustez_significancia(per_te, y_te_.to_numpy(), res["pred_test"], refs, res["nombre_sel"])
-
+        print("\n[Obs.3] Robustez de la significancia SOLO con historial real")
+        cierre_observaciones.robustez_con_historial(per_te, y_te_.to_numpy(), res["pred_test"], refs,
+                                                    res["nombre_sel"], tiene_hist=df_te["TIENE_HISTORIAL"].to_numpy())
         p_lgbm = res["mejores_params"]["lgbm"]
         p_res = res["mejores_params"]["lgbm_res"]
         print("\n[Obs.9] Ablación con X3 separada en territorio y producto (Holm con 5 pruebas)")
@@ -126,7 +131,11 @@ def main():
                                                  robustez.dimensiones_x3_separada(dimensiones), p_res, a.rapido)
         print("\n[Obs.8] Variante con X2 rezagada")
         robustez.variante_x2_rezagada(df, y, idx_dev, idx_te, features, dimensiones, p_lgbm, a.rapido)
-
+        print("\n[Obs.8] X2 rezagada / sin X2 sobre el MODELO FINAL")
+        cierre_observaciones.variante_x2_modelo_final(df, y, idx_dev, idx_te, features, dimensiones, p_res, a.rapido)
+        print("\n[Obs.2,9] ΔMAE por fold de la ablación y % con historial")
+        cierre_observaciones.ablacion_por_fold(df, y, idx_dev, features,
+                                               robustez.dimensiones_x3_separada(dimensiones), p_lgbm, a.rapido)
         print("\n[Obs.11] Particiones y folds")
         documentacion.tabla_particiones(df, idx_tr, idx_va, idx_te)
         documentacion.tabla_folds(df, idx_tr, idx_dev, a.rapido)
