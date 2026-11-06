@@ -73,8 +73,21 @@ def validacion():
 
 @app.get("/api/results/ablation")
 def ablation():
+    # Obs. 2: la ablación vigente es la de LightGBM (misma familia que el modelo final). Random Forest queda
+    # solo como respaldo si aún no se corrió la versión nueva.
     cols = ["Dimension", "R2_sin_dim", "R2_completo", "Diferencia_R2", "p_valor", "p_holm", "Significativa_estadistica"]
-    return [{c: r.get(c) for c in cols} for r in _csv("tabla_ablation_wilcoxon.csv")]
+    filas = _csv("tabla_ablation_wilcoxon_lgbm.csv") or _csv("tabla_ablation_wilcoxon.csv")
+    return [{c: r.get(c) for c in cols} for r in filas]
+
+
+@app.get("/api/results/significance")
+def significancia():
+    return _csv("tabla_significancia_vs_baseline.csv")
+
+
+@app.get("/api/results/gap")
+def brecha():
+    return _csv("tabla_mae_por_brecha.csv")
 
 
 @app.get("/api/results/hypothesis-report")
@@ -103,9 +116,12 @@ def catalogo():
 class Entrada(BaseModel):
     ANO: int = Field(ge=2000, le=2100)
     MES: int = Field(ge=1, le=12)
-    SIEMBRA: float = Field(ge=0)
-    COSECHA: float = Field(ge=0)
-    PRODUCCION: float = Field(ge=0)
+    # Obs. 8: SIEMBRA/COSECHA/PRODUCCION del MISMO mes no están disponibles al emitir un pronóstico. En la
+    # evaluación, quitarlas o rezagarlas no empeora el modelo (tabla_variante_x2_rezagada.csv), así que son
+    # OPCIONALES: si faltan, el pipeline las imputa con la mediana de entrenamiento.
+    SIEMBRA: float | None = Field(default=None, ge=0)
+    COSECHA: float | None = Field(default=None, ge=0)
+    PRODUCCION: float | None = Field(default=None, ge=0)
     PROVINCIA: str
     DISTRITO: str
     COD_CULTIVO: int
@@ -123,15 +139,18 @@ def predecir(p: Entrada):
     for nombre, valor, clave in (("Provincia", prov, "PROVINCIA"), ("Distrito", dist, "DISTRITO"), ("Cultivo", cod, "COD_CULTIVO")):
         if valor not in cat[clave]:
             raise HTTPException(422, f"{nombre} '{valor}' no existe en los datos de entrenamiento.")
-    if p.COSECHA > p.SIEMBRA:
+    if p.COSECHA is not None and p.SIEMBRA is not None and p.COSECHA > p.SIEMBRA:
         raise HTTPException(422, "COSECHA no puede superar a SIEMBRA.")
     mes = p.MES
     fila = {
         "ANO": p.ANO, "MES_NUM": mes,
         "MES_SEN": float(np.sin(2 * np.pi * mes / 12)), "MES_COS": float(np.cos(2 * np.pi * mes / 12)),
         "ESTACION": 0 if mes in (12, 1, 2) else 1 if mes in (3, 4, 5) else 2 if mes in (6, 7, 8) else 3,
-        "SIEMBRA": p.SIEMBRA, "COSECHA": p.COSECHA, "PRODUCCION": p.PRODUCCION,
-        "RENDIMIENTO_TON_HA": p.PRODUCCION / p.COSECHA if p.COSECHA > 0 else 0.0,
+        "SIEMBRA": p.SIEMBRA if p.SIEMBRA is not None else np.nan,
+        "COSECHA": p.COSECHA if p.COSECHA is not None else np.nan,
+        "PRODUCCION": p.PRODUCCION if p.PRODUCCION is not None else np.nan,
+        "RENDIMIENTO_TON_HA": (p.PRODUCCION / p.COSECHA if p.COSECHA > 0 else 0.0)
+                              if (p.COSECHA is not None and p.PRODUCCION is not None) else np.nan,
         "PROVINCIA_enc": cat["PROVINCIA"][prov], "DISTRITO_enc": cat["DISTRITO"][dist],
         "CULTIVO_enc": cat["COD_CULTIVO"][cod],
         "PRECIO_LAG1": p.PRECIO_LAG1,

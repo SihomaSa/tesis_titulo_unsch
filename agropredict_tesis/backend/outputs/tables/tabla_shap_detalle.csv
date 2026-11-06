@@ -1,18 +1,18 @@
-Variable,Dimension,mean_abs_SHAP,Pct_total,Pct_acumulado,n_registros_muestra
-PRECIO_LAG1,X4_Economica_Historica,0.071018021722829,31.046763482837434,31.046763482837434,1500
-ANO,X1_Temporal,0.04317819805484975,18.87610032078814,49.922863803625575,1500
-VARIACION_PRECIO_PREVIA,X4_Economica_Historica,0.03463383107955887,15.140781676912857,65.06364548053843,1500
-MEDIA_MOVIL_3,X4_Economica_Historica,0.017958796067546055,7.851000076032573,72.914645556571,1500
-CULTIVO_enc,X3_Geografica,0.015350223343913694,6.710617136410908,79.6252626929819,1500
-MESES_DESDE_PRECIO_PREVIO,X4_Economica_Historica,0.012613790421191982,5.514337886758412,85.13960057974032,1500
-PROVINCIA_enc,X3_Geografica,0.009453523451490847,4.132772211304026,89.27237279104435,1500
-RENDIMIENTO_TON_HA,X2_Productiva,0.008247039365904105,3.605336707718629,92.87770949876298,1500
-PRODUCCION,X2_Productiva,0.00331455981830951,1.4490174779916793,94.32672697675466,1500
-MES_SEN,X1_Temporal,0.0030196388093129394,1.3200876290559838,95.64681460581065,1500
-COSECHA,X2_Productiva,0.002569841481709846,1.1234509035244336,96.77026550933508,1500
-MES_NUM,X1_Temporal,0.002397647467463271,1.0481732950557197,97.8184388043908,1500
-ESTACION,X1_Temporal,0.001708491812763786,0.7468969134378258,98.56533571782862,1500
-DISTRITO_enc,X3_Geografica,0.001636022972541419,0.7152158994123939,99.28055161724102,1500
-MES_COS,X1_Temporal,0.0012790862325515815,0.5591747949720367,99.83972641221305,1500
-SIEMBRA,X2_Productiva,0.00036661834800720273,0.16027358778693385,99.99999999999999,1500
-TIENE_HISTORIAL,X4_Economica_Historica,0.0,0.0,99.99999999999999,1500
+Variable,Dimension,mean_abs_SHAP,Pct_total,Pct_acumulado,n_registros_muestra,n_subconjunto_con_historial,escala_shap,formula,nota
+PRECIO_LAG1,X4_Economica_Historica,0.071018021722829,31.046763482837434,31.046763482837434,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+ANO,X1_Temporal,0.04317819805484975,18.87610032078814,49.922863803625575,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+VARIACION_PRECIO_PREVIA,X4_Economica_Historica,0.03463383107955887,15.140781676912857,65.06364548053843,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+MEDIA_MOVIL_3,X4_Economica_Historica,0.017958796067546055,7.851000076032573,72.914645556571,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+CULTIVO_enc,X3_Geografica,0.015350223343913694,6.710617136410908,79.6252626929819,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+MESES_DESDE_PRECIO_PREVIO,X4_Economica_Historica,0.012613790421191982,5.514337886758412,85.13960057974032,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+PROVINCIA_enc,X3_Geografica,0.009453523451490847,4.132772211304026,89.27237279104435,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+RENDIMIENTO_TON_HA,X2_Productiva,0.008247039365904105,3.605336707718629,92.87770949876298,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+PRODUCCION,X2_Productiva,0.00331455981830951,1.4490174779916793,94.32672697675466,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+MES_SEN,X1_Temporal,0.0030196388093129394,1.3200876290559838,95.64681460581065,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+COSECHA,X2_Productiva,0.002569841481709846,1.1234509035244336,96.77026550933508,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+MES_NUM,X1_Temporal,0.002397647467463271,1.0481732950557197,97.8184388043908,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+ESTACION,X1_Temporal,0.001708491812763786,0.7468969134378258,98.56533571782862,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+DISTRITO_enc,X3_Geografica,0.001636022972541419,0.7152158994123939,99.28055161724102,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+MES_COS,X1_Temporal,0.0012790862325515815,0.5591747949720367,99.83972641221305,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+SIEMBRA,X2_Productiva,0.00036661834800720273,0.16027358778693385,99.99999999999999,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,
+TIENE_HISTORIAL,X4_Economica_Historica,0.0,0.0,99.99999999999999,1500,2102,log(precio / PRECIO_LAG1): cambio relativo respecto de la persistencia,Pct_dimensión = Σ mean|SHAP_j| (j∈dimensión) / Σ mean|SHAP_j| (todas); muestra del conjunto de PRUEBA,Constante (=1) en el subconjunto explicado: 0 por construcción

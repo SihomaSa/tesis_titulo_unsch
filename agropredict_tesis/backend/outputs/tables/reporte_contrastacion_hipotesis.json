@@ -17,26 +17,26 @@
     {
       "codigo": "X1",
       "texto": "La dimensión temporal del entorno agroeconómico influye significativamente en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
-      "R2_sin_dimension": 0.7329953250328627,
-      "diferencia_R2": 0.0003424438953121278,
-      "p_valor": 0.921875,
+      "R2_sin_dimension": 0.752416846991431,
+      "diferencia_R2": 0.0015616860735614413,
+      "p_valor": 1.0,
       "significativa_wilcoxon": "No",
       "importancia_gini_dimension": 0.18352796954269956
     },
     {
       "codigo": "X2",
       "texto": "La dimensión productiva del entorno agroeconómico influye significativamente en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
-      "R2_sin_dimension": 0.7457065753424711,
-      "diferencia_R2": -0.012368806414296274,
-      "p_valor": 0.921875,
+      "R2_sin_dimension": 0.7597178799456383,
+      "diferencia_R2": -0.005739346880645924,
+      "p_valor": 1.0,
       "significativa_wilcoxon": "No",
       "importancia_gini_dimension": 0.23203235719902343
     },
     {
       "codigo": "X3",
       "texto": "La dimensión geográfica del entorno agroeconómico influye significativamente en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
-      "R2_sin_dimension": 0.7026755947647432,
-      "diferencia_R2": 0.030662174163431644,
+      "R2_sin_dimension": 0.6886785428022439,
+      "diferencia_R2": 0.06529999026274846,
       "p_valor": 0.00390625,
       "significativa_wilcoxon": "Sí",
       "importancia_gini_dimension": 0.1869317649451026
@@ -44,9 +44,9 @@
     {
       "codigo": "X4",
       "texto": "La dimensión económica histórica del entorno agroeconómico influye significativamente en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
-      "R2_sin_dimension": 0.631855259194934,
-      "diferencia_R2": 0.1014825097332408,
-      "p_valor": 0.00390625,
+      "R2_sin_dimension": 0.7291013091010446,
+      "diferencia_R2": 0.02487722396394776,
+      "p_valor": 0.041015625,
       "significativa_wilcoxon": "Sí",
       "importancia_gini_dimension": 0.3975079083131744
     }

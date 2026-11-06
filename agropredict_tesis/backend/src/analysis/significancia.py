@@ -130,3 +130,43 @@ def reporte_prueba(periodo_te, y_te, pred_final, nombre_final, refs: dict):
         print(f"[Significancia] vs {r['Referencia']:<28} ΔMAE%={r['Reduccion_MAE_pct']:+.1f} "
               f"| IC95 dif mensual [{r['IC95_inf']:+.4f}, {r['IC95_sup']:+.4f}] | p_Holm={r['p_holm']:.3f}")
     return t, ic
+
+
+# ---------------------------------------------------------------------------
+# Robustez de la prueba de significancia (Obs. 3, parte 2)
+# ---------------------------------------------------------------------------
+def robustez_significancia(periodo, y, pred_modelo, refs: dict, nombre_modelo):
+    """Comprueba que la conclusión de la Obs. 3 no dependa de UNA elección arbitraria.
+
+    Para cada referencia se repite la comparación bajo:
+      * pérdida absoluta (la del análisis principal) y pérdida CUADRÁTICA (consistente con RMSE/R²);
+      * rezagos HAC L = 1, 2 y 3 (con 16 meses, L es una elección y no un dato);
+      * longitud de bloque del bootstrap = 2, 3 y 4 meses;
+      * prueba de signos exacta (binomial): en cuántos meses gana el modelo. No supone
+        normalidad ni especifica estructura de dependencia: es la prueba más conservadora.
+    Escribe tabla_significancia_robustez.csv. Con pocos meses de prueba es normal que alguna
+    variante pierda significancia: eso se reporta tal cual, no se oculta.
+    """
+    filas = []
+    for ref, pr in refs.items():
+        for tipo in ("abs", "sq"):
+            d = perdida_mensual(periodo, y, pr, pred_modelo, tipo)
+            T = len(d)
+            ganados = int((d > 0).sum())
+            p_signo = float(stats.binomtest(ganados, T, 0.5, alternative="greater").pvalue)
+            for L in (1, 2, 3):
+                h = hac_media(d, L=L)
+                for b in (2, 3, 4):
+                    lo, hi, _ = bootstrap_bloques_media(d, bloque=b)
+                    filas.append({"Modelo": nombre_modelo, "Referencia": ref, "Perdida": "absoluta" if tipo == "abs" else "cuadrática",
+                                  "L_HAC": L, "bloque_bootstrap": b, "n_meses": T, "meses_modelo_mejor": ganados,
+                                  "p_signos_exacto": p_signo, "Dif_media_mensual": h["media"], "p_unilateral_HAC": h["p_unilateral"],
+                                  "IC95_inf": lo, "IC95_sup": hi, "IC_excluye_0": "Sí" if lo > 0 else "No"})
+    t = pd.DataFrame(filas)
+    t.to_csv(os.path.join(OUT_TAB, "tabla_significancia_robustez.csv"), index=False)
+    res = (t.groupby(["Referencia", "Perdida"])
+             .agg(meses_mejor=("meses_modelo_mejor", "first"), n=("n_meses", "first"), p_signos=("p_signos_exacto", "first"),
+                  p_HAC_max=("p_unilateral_HAC", "max"), p_HAC_min=("p_unilateral_HAC", "min"),
+                  IC_excluye_0_en=("IC_excluye_0", lambda s: f"{(s == 'Sí').sum()}/{len(s)}")).reset_index())
+    print(res.round(4).to_string(index=False))
+    return t

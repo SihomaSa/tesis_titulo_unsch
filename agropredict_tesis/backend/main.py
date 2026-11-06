@@ -80,8 +80,13 @@ def main():
     rf_params = res["mejores_params"]["rf"]
     idx_dev = np.concatenate([idx_tr, idx_va])
 
-    print("\n[Fase 7] Contraste de hipótesis (ablation + Wilcoxon + Holm)...")
-    abl = run_ablation(X, y, idx_dev, features, dimensiones, rf_params, a.rapido)
+    # Obs. 2: la ablación PRINCIPAL se hace con LightGBM (misma familia que el modelo final, hiperparámetros ya
+    # ajustados). Random Forest se conserva solo como análisis de robustez (tabla_ablation_wilcoxon.csv).
+    print("\n[Fase 7] Contraste de hipótesis: ablation + Wilcoxon + Holm con LightGBM (principal)...")
+    abl = run_ablation(X, y, idx_dev, features, dimensiones, res["mejores_params"]["lgbm"], a.rapido,
+                       clave="lgbm", sufijo="_lgbm")
+    print("\n[Fase 7] Robustez: la misma ablación con Random Forest...")
+    abl_rf = run_ablation(X, y, idx_dev, features, dimensiones, rf_params, a.rapido, clave="rf", sufijo="")
 
     print("\n[Fase 8] Interpretabilidad (SHAP + permutación agrupada)...")
     interp = interpretar(res, X, y, idx_va, idx_te, features, dimensiones)
@@ -103,16 +108,28 @@ def main():
                 refs[NOMBRES[k]] = m_.predict(X_te)
         print("\n[Obs.1,3] Significancia frente a baselines y otros modelos (pérdidas pareadas por mes, HAC, bloques)")
         significancia.reporte_prueba(per_te, y_te_.to_numpy(), res["pred_test"], res["nombre_sel"], refs)
+        print("\n[Obs.3] Robustez de la significancia: pérdida absoluta y cuadrática, L-HAC, bloque, prueba de signos")
+        significancia.robustez_significancia(per_te, y_te_.to_numpy(), res["pred_test"], refs, res["nombre_sel"])
 
         p_lgbm = res["mejores_params"]["lgbm"]
-        robustez.ablaciones(X, y, idx_dev, features, dimensiones, p_lgbm, a.rapido)                    # Obs. 2 y 9
-        print("\n[Obs.1] Contribución de cada dimensión EN PRUEBA (LightGBM, pareado por mes)")
+        p_res = res["mejores_params"]["lgbm_res"]
+        print("\n[Obs.9] Ablación con X3 separada en territorio y producto (Holm con 5 pruebas)")
+        run_ablation(X, y, idx_dev, features, robustez.dimensiones_x3_separada(dimensiones), p_lgbm, a.rapido,
+                     clave="lgbm", sufijo="_lgbm_x3_separada")
+        print("\n[Obs.1] Contribución de cada dimensión EN PRUEBA (LightGBM directo, pareado por mes)")
         robustez.contribucion_en_prueba(df, y, idx_dev, idx_te, features, dimensiones, p_lgbm, a.rapido)
+        print("\n[Obs.9] Contribución EN PRUEBA con X3 separada en territorio y producto")
+        robustez.contribucion_en_prueba(df, y, idx_dev, idx_te, features, robustez.dimensiones_x3_separada(dimensiones),
+                                        p_lgbm, a.rapido, etiqueta="lgbm_x3_separada")
+        print("\n[Obs.2] Contribución X1–X3 EN PRUEBA sobre el MODELO FINAL (LightGBM sobre persistencia)")
+        robustez.contribucion_en_prueba_residual(df, y, idx_dev, idx_te, features,
+                                                 robustez.dimensiones_x3_separada(dimensiones), p_res, a.rapido)
         print("\n[Obs.8] Variante con X2 rezagada")
         robustez.variante_x2_rezagada(df, y, idx_dev, idx_te, features, dimensiones, p_lgbm, a.rapido)
 
-        print("\n[Obs.11] Particiones")
+        print("\n[Obs.11] Particiones y folds")
         documentacion.tabla_particiones(df, idx_tr, idx_va, idx_te)
+        documentacion.tabla_folds(df, idx_tr, idx_dev, a.rapido)
         print("\n[Obs.4] MAE por brecha al precio previo")
         documentacion.mae_por_brecha(df_te, y_te_, res["pred_test"], refs["Persistencia"])
         print("\n[Obs.12] SHAP e importancia comparada")
@@ -121,7 +138,7 @@ def main():
 
         print("\n[Obs.10] Sesgo por depuración")
         depuracion_sesgo.diagnostico(a.datos)
-        depuracion_sesgo.sensibilidad(a.datos)
+        depuracion_sesgo.sensibilidad(a.datos, params_res=p_res, rapido=a.rapido)
 
     # Figuras
     fg.fig_flujo_metodologico()

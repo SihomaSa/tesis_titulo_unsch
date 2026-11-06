@@ -18,7 +18,7 @@ from lightgbm import LGBMRegressor
 
 from src.config import RANDOM_STATE, OUT_FIG, OUT_MOD, COLORES, \
     UMBRAL_R2_CAP3, UMBRAL_R2_CAP4
-from src.models.compare_models import safe_mape
+from agropredict_tesis.backend.src.legacy.compare_models import safe_mape
 
 
 def _metrics_de(y_test, y_pred):

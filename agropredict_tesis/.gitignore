@@ -10,7 +10,7 @@ venv/
 backend/data/*.csv
 !backend/data/.gitkeep
 backend/mlruns/
-backend/mlflow.db
+
 
 # Los resultados SÍ se versionan porque la API desplegada los necesita:
 # backend/outputs/figures, tables, models, tesis_texto

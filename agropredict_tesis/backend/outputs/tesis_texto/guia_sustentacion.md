@@ -13,16 +13,16 @@ Tres controles: (1) las variables históricas usan solo precios de períodos ant
 Son valores que se fijan antes de entrenar (profundidad, número de árboles, tasa de aprendizaje); los parámetros, en cambio, los aprende el modelo. Se optimizaron con búsqueda aleatoria y validación cruzada temporal solo en entrenamiento (Tabla D).
 
 ## ¿Su modelo es mejor que simplemente repetir el último precio?
-Ligeramente: en prueba el MAE del modelo es 0.4189 frente a 0.4392 de la persistencia (R² 0.7775 vs 0.7319). La reducción del MAE es de 4.6 %, una mejora modesta cuya significancia estadística no se probó; además la media móvil de 3 obtiene un R² casi igual (0.7762). Hay que presentarlo como mejora acotada, no como superioridad rotunda.
+Ligeramente: en prueba el MAE del modelo es 0.4189 frente a 0.4392 de la persistencia (R² 0.7775 vs 0.7319). La reducción del MAE es de 4.6 %, una mejora modesta cuya significancia (pérdidas pareadas por mes, errores HAC, IC por bootstrap de bloques) está en tabla_significancia_vs_baseline.csv; además la media móvil de 3 obtiene un R² casi igual (0.7762). Hay que presentarlo como mejora acotada, no como superioridad rotunda.
 
 ## ¿Por qué se eligió LightGBM sobre persistencia si otro modelo tiene mayor R² en prueba?
 La regla de selección (menor MAE en validación) se fijó antes de ver la prueba; elegir en prueba la contaminaría. Mejor R² en prueba entre los modelos de ML: XGBoost (0.7992); el elegido logra el menor MAE (0.4189) y el mayor R²_log (0.7929).
 
 ## ¿Por qué no se aceptaron 2 de las hipótesis específicas?
-Las dimensiones temporal, productiva no alcanzaron significancia tras la corrección de Holm. Temporal: sola alcanza R² = -0.0167 y con X4 aporta -0.0014, es decir, no añade información que el precio pasado no tenga. Productiva: sola alcanza R² = 0.1318 y con X4 aporta -0.0195, es decir, no añade información que el precio pasado no tenga. No aceptar una hipótesis específica no invalida el trabajo: indica en qué dimensiones está la información predictiva (geográfica, económica histórica).
+Las dimensiones temporal, productiva no alcanzaron significancia tras la corrección de Holm. Temporal: sola alcanza R² = -0.0116 y con X4 aporta 0.0026, es decir, no añade información que el precio pasado no tenga. Productiva: sola alcanza R² = 0.1323 y con X4 aporta -0.0370, es decir, no añade información que el precio pasado no tenga. No aceptar una hipótesis específica no invalida el trabajo: indica en qué dimensiones está la información predictiva (geográfica, económica histórica).
 
 ## ¿Por qué el R² completo de la ablation no coincide con el de prueba?
-La ablation se hace con Random Forest en particiones temporales del tramo de desarrollo (entrenamiento + validación), no en el conjunto de prueba; sirve para comparar dimensiones entre sí, no para reportar el desempeño final.
+La ablation principal se hace con LightGBM (misma familia que el modelo final) en particiones temporales del tramo de desarrollo (entrenamiento + validación), no en el conjunto de prueba; sirve para comparar dimensiones entre sí, no para reportar el desempeño final.
 
 ## ¿Por qué LightGBM/XGBoost/RF y no una red LSTM?
 Los datos son series cortas, irregulares y de muchos cultivos; los modelos de árboles manejan bien variables mixtas y pocos datos. Una LSTM global mezclaría cultivos heterogéneos; se deja como trabajo futuro por cultivo.

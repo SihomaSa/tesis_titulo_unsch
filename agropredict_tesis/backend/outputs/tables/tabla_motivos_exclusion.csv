@@ -1,5 +1,5 @@
-Motivo,n,Pct
-Precio = 0 (sin precio registrado),85870,68.96413254734406
-COSECHA=0 y PRODUCCION>0,20900,16.785261095137898
-Retenido,14393,11.559342724512907
-Faltan SIEMBRA/COSECHA/PRODUCCION,3351,2.691263633005124
+Motivo,n,Pct,Tipo
+Precio = 0 (sin precio registrado),85870,68.96413254734406,Estructural: no hubo precio de chacra registrado (el objetivo no existe)
+COSECHA=0 y PRODUCCION>0,20900,16.785261095137898,"Regla de consistencia: posible cosecha de otra campaña/mes (discutible, ver sensibilidad)"
+Retenido,14393,11.559342724512907,Retenido (muestra de modelado)
+Faltan SIEMBRA/COSECHA/PRODUCCION,3351,2.691263633005124,Registro inválido: variables del registro agrícola incompletas

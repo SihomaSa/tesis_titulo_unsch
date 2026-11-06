@@ -1,0 +1,4 @@
+Variable,chi2,p,V_Cramer,categorias,n_base,alcance
+CULTIVO,22193.055166475686,0.0,0.7929836962067097,80,35293,Solo regla de cosecha (entre registros con precio>0 y X2 completa)
+PROVINCIA,725.6437035294474,1.7750995338702433e-153,0.14338952548079736,7,35293,Solo regla de cosecha (entre registros con precio>0 y X2 completa)
+ANO,2248.3051479708197,0.0,0.2523965064847939,10,35293,Solo regla de cosecha (entre registros con precio>0 y X2 completa)

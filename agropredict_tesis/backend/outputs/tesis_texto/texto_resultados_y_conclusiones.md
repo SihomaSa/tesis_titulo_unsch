@@ -157,7 +157,7 @@ El desempeño es heterogéneo: el modelo alcanza R² = 0.5070 en el segmento de 
 
 ### 4.2.3. Fase 8 — Interpretabilidad
 
-La importancia por ganancia del modelo asigna X1 18.4 %, X2 23.2 %, X3 18.7 %, X4 39.8 %. El análisis con valores SHAP (Lundberg y Lee, 2017) atribuye X1 22.6 %, X2 6.3 %, X3 11.6 %, X4 59.6 % de la contribución media absoluta a las predicciones. Como la ganancia puede repartirse arbitrariamente entre variables correlacionadas, se verificó con permutación agrupada: al desordenar las variables de X4 el R² cae 1.3210; en las demás dimensiones la caída es X1 0.0000, X2 0.0043, X3 0.0250.
+La importancia por ganancia del modelo asigna X1 18.4 %, X2 23.2 %, X3 18.7 %, X4 39.8 %. El análisis con valores SHAP (Lundberg y Lee, 2017) atribuye X1 22.6 %, X2 6.3 %, X3 11.6 %, X4 59.6 % de la contribución media absoluta a las predicciones. Como la ganancia puede repartirse arbitrariamente entre variables correlacionadas, se verificó con permutación agrupada: al desordenar las variables de X4 el R² cae 0.1144; en las demás dimensiones la caída es X1 0.0000, X2 0.0043, X3 0.0250.
 
 **Figura F.** Importancia por dimensión (ganancia, SHAP y permutación). → `figura_importancia_por_dimension.png`; **Figura G.** Resumen SHAP → `figura_shap_resumen.png`
 
@@ -175,10 +175,10 @@ Para evaluar la influencia de cada dimensión se entrenaron, con los hiperparám
 
 | Dimensión excluida | R² completo | R² sin la dimensión | ΔR² | p (Wilcoxon) | p (Holm) | ¿Significativa? |
 |---|---|---|---|---|---|---|
-| X1_Temporal | 0.7333 | 0.7330 | 0.0003 | 0.461 | 0.922 | No |
-| X2_Productiva | 0.7333 | 0.7457 | -0.0124 | 0.903 | 0.922 | No |
-| X3_Geografica | 0.7333 | 0.7027 | 0.0307 | <0.001 | 0.004 | Sí |
-| X4_Economica_Historica | 0.7333 | 0.6319 | 0.1015 | <0.001 | 0.004 | Sí |
+| X1_Temporal | 0.7540 | 0.7524 | 0.0016 | 0.539 | 1.000 | No |
+| X2_Productiva | 0.7540 | 0.7597 | -0.0057 | 0.968 | 1.000 | No |
+| X3_Geografica | 0.7540 | 0.6887 | 0.0653 | <0.001 | 0.004 | Sí |
+| X4_Economica_Historica | 0.7540 | 0.7291 | 0.0249 | 0.014 | 0.041 | Sí |
 
 *Nota.* Prueba unilateral; Holm sobre 4 comparaciones. Elaboración propia.
 
@@ -188,10 +188,10 @@ Para interpretar los resultados se añadieron dos análisis complementarios: el 
 
 | Dimensión | R² solo con la dimensión | R² de X4 + dimensión | Aporte sobre X4 | p (Holm) |
 |---|---|---|---|---|
-| X1_Temporal | -0.0167 | 0.7239 | -0.0014 | 1.000 |
-| X2_Productiva | 0.1318 | 0.7058 | -0.0195 | 1.000 |
-| X3_Geografica | 0.5816 | 0.7314 | 0.0061 | 0.196 |
-| X4_Economica_Historica | 0.7253 | 0.7253 | — | — |
+| X1_Temporal | -0.0116 | 0.7201 | 0.0026 | 0.846 |
+| X2_Productiva | 0.1323 | 0.6805 | -0.0370 | 0.997 |
+| X3_Geografica | 0.7382 | 0.7551 | 0.0376 | 0.003 |
+| X4_Economica_Historica | 0.7175 | 0.7175 | — | — |
 
 **Figura I.** Ablation por dimensión. → `figura_ablation_por_dimension.png`
 
@@ -201,19 +201,19 @@ Para interpretar los resultados se añadieron dos análisis complementarios: el 
 
 ### 4.3.2. Hipótesis específicas
 
-**H1 — Dimensión temporal: NO ACEPTADA** (ΔR² = 0.0003; p = 0.461; p Holm = 0.922). No hay evidencia de que excluir la dimensión empeore de manera significativa el modelo. Por sí sola su capacidad predictiva es limitada (R² = -0.0167) y, con X4 presente, aporta -0.0014 de R² adicional.
+**H1 — Dimensión temporal: NO ACEPTADA** (ΔR² = 0.0016; p = 0.539; p Holm = 1.000). No hay evidencia de que excluir la dimensión empeore de manera significativa el modelo. Por sí sola su capacidad predictiva es limitada (R² = -0.0116) y, con X4 presente, aporta 0.0026 de R² adicional.
 
-**H2 — Dimensión productiva: NO ACEPTADA** (ΔR² = -0.0124; p = 0.903; p Holm = 0.922). No hay evidencia de que excluir la dimensión empeore de manera significativa el modelo. Por sí sola su capacidad predictiva es limitada (R² = 0.1318) y, con X4 presente, aporta -0.0195 de R² adicional.
+**H2 — Dimensión productiva: NO ACEPTADA** (ΔR² = -0.0057; p = 0.968; p Holm = 1.000). No hay evidencia de que excluir la dimensión empeore de manera significativa el modelo. Por sí sola su capacidad predictiva es limitada (R² = 0.1323) y, con X4 presente, aporta -0.0370 de R² adicional.
 
-**H3 — Dimensión geográfica: ACEPTADA** (ΔR² = 0.0307; p = <0.001; p Holm = 0.004). Excluir la dimensión reduce el R² de 0.7333 a 0.7027, de forma consistente en las particiones temporales. Por sí sola alcanza R² = 0.5816.
+**H3 — Dimensión geográfica: ACEPTADA** (ΔR² = 0.0653; p = <0.001; p Holm = 0.004). Excluir la dimensión reduce el R² de 0.7540 a 0.6887, de forma consistente en las particiones temporales. Por sí sola alcanza R² = 0.7382.
 
-**H4 — Dimensión económica histórica: ACEPTADA** (ΔR² = 0.1015; p = <0.001; p Holm = 0.004). Excluir la dimensión reduce el R² de 0.7333 a 0.6319, de forma consistente en las particiones temporales. Por sí sola alcanza R² = 0.7253.
+**H4 — Dimensión económica histórica: ACEPTADA** (ΔR² = 0.0249; p = 0.014; p Holm = 0.041). Excluir la dimensión reduce el R² de 0.7540 a 0.7291, de forma consistente en las particiones temporales. Por sí sola alcanza R² = 0.7175.
 
 *Nota.* La no aceptación de una hipótesis específica indica ausencia de aporte predictivo incremental detectable en este conjunto de datos, no ausencia de relación económica.
 
 ## 4.4. DISCUSIÓN (párrafos de apoyo)
 
-Los resultados muestran que la económica histórica concentra la mayor parte de la capacidad predictiva del modelo, lo que concuerda con la fuerte inercia de los precios agrícolas reportada en la literatura. El modelo supera al pronóstico ingenuo de persistencia en MAE (mejora modesta, de 4.6 %, sin prueba de significancia), por lo que el valor agregado de las técnicas de Machine Learning en este contexto es acotado: la mayor parte de la capacidad predictiva proviene de la propia historia de precios. Las comparaciones con estudios previos deben hacerse con cautela, porque las métricas dependen del número de cultivos, del horizonte y del esquema de validación.
+Los resultados muestran que la económica histórica concentra la mayor parte de la capacidad predictiva del modelo, lo que concuerda con la fuerte inercia de los precios agrícolas reportada en la literatura. El modelo supera al pronóstico ingenuo de persistencia en MAE (mejora modesta, de 4.6 %, la significancia se evalúa en tabla_significancia_vs_baseline.csv), por lo que el valor agregado de las técnicas de Machine Learning en este contexto es acotado: la mayor parte de la capacidad predictiva proviene de la propia historia de precios. Las comparaciones con estudios previos deben hacerse con cautela, porque las métricas dependen del número de cultivos, del horizonte y del esquema de validación.
 
 ### Limitaciones (4.4.4)
 
@@ -229,13 +229,13 @@ Los resultados muestran que la económica histórica concentra la mayor parte de
 
 2. **Comparación con referencias.** Frente al pronóstico ingenuo de persistencia, LightGBM sobre persistencia reduce el MAE en 4.6 % y mejora el R² (0.7775 frente a 0.7319); frente a la regresión lineal, el R² es 0.7775 contra 0.7514.
 
-3. **Dimensión temporal.** No se encontró aporte incremental significativo (ΔR² = 0.0003; p Holm = 0.922). Por sí sola su capacidad predictiva es nula o muy baja (R² = -0.0167) y, con la historia de precios presente, no mejora el modelo (aporte = -0.0014); en este conjunto de datos la dimensión no aporta información que el precio pasado no contenga, sin que ello implique ausencia de relación económica. 
+3. **Dimensión temporal.** No se encontró aporte incremental significativo (ΔR² = 0.0016; p Holm = 1.000). Por sí sola su capacidad predictiva es nula o muy baja (R² = -0.0116) y, con la historia de precios presente, no mejora el modelo (aporte = 0.0026); en este conjunto de datos la dimensión no aporta información que el precio pasado no contenga, sin que ello implique ausencia de relación económica. 
 
-4. **Dimensión productiva.** No se encontró aporte incremental significativo (ΔR² = -0.0124; p Holm = 0.922). Por sí sola su capacidad predictiva es nula o muy baja (R² = 0.1318) y, con la historia de precios presente, no mejora el modelo (aporte = -0.0195); en este conjunto de datos la dimensión no aporta información que el precio pasado no contenga, sin que ello implique ausencia de relación económica. 
+4. **Dimensión productiva.** No se encontró aporte incremental significativo (ΔR² = -0.0057; p Holm = 1.000). Por sí sola su capacidad predictiva es nula o muy baja (R² = 0.1323) y, con la historia de precios presente, no mejora el modelo (aporte = -0.0370); en este conjunto de datos la dimensión no aporta información que el precio pasado no contenga, sin que ello implique ausencia de relación económica. 
 
-5. **Dimensión geográfica.** Influye de forma estadísticamente significativa: excluirla reduce el R² en 0.0307 (p Holm = 0.004). 
+5. **Dimensión geográfica.** Influye de forma estadísticamente significativa: excluirla reduce el R² en 0.0653 (p Holm = 0.004). 
 
-6. **Dimensión económica histórica.** Influye de forma estadísticamente significativa: excluirla reduce el R² en 0.1015 (p Holm = 0.004). 
+6. **Dimensión económica histórica.** Influye de forma estadísticamente significativa: excluirla reduce el R² en 0.0249 (p Holm = 0.041). 
 
 7. **Interpretabilidad.** La dimensión económica histórica es la de mayor peso (59.6 % de la contribución SHAP).
 

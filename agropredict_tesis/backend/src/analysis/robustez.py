@@ -111,3 +111,56 @@ def variante_x2_rezagada(df, y, idx_dev, idx_te, features, dimensiones, p_lgbm, 
     t.to_csv(os.path.join(OUT_TAB, "tabla_variante_x2_rezagada.csv"), index=False)
     print(t.to_string(index=False))
     return t
+
+
+# ---------------------------------------------------------------------------
+# Obs. 2 (parte final): ablación sobre el MODELO FINAL (LightGBM sobre persistencia)
+# ---------------------------------------------------------------------------
+def params_residual(p_res, rapido=False):
+    """`mejores_params['lgbm_res']` llega SIN prefijo (entrenamiento._limpiar corta en el último '__').
+    Para volver a usarlos con PersistenciaResidual hay que restituir 'base__model__'."""
+    prm = {f"base__model__{k}": v for k, v in p_res.items()}
+    if rapido and "base__model__n_estimators" in prm:
+        prm["base__model__n_estimators"] = min(int(prm["base__model__n_estimators"]), 100)
+    return prm
+
+
+def contribucion_en_prueba_residual(df, y, idx_dev, idx_te, features, dimensiones, p_res, rapido=False, etiqueta="lgbm_res"):
+    """Obs. 2: el jurado pidió 'en el modelo residual ablacionar solo X1–X3'.
+
+    X4 NO se ablaciona aquí: contiene PRECIO_LAG1 y TIENE_HISTORIAL, que el modelo residual necesita
+    para reconstruir el precio (precio = PRECIO_LAG1·exp(cambio)). Quitarlos no es 'ablación de una
+    dimensión', es romper el modelo. Su aporte ya está en la ablación con LightGBM directo.
+    Mide, en PRUEBA y con pérdidas pareadas por mes (HAC + Holm), cuánto empeora el modelo final
+    al quitar cada dimensión de la CORRECCIÓN.
+    """
+    prm = params_residual(p_res, rapido)
+    yt = y.iloc[idx_te].to_numpy()
+    per = df["PERIODO"].iloc[idx_te].to_numpy()
+
+    def ajusta(feats):
+        Xv = df[feats].astype(float)
+        pipe = build_pipeline("lgbm_res", feats, **prm)
+        pipe.fit(Xv.iloc[idx_dev], df["PRECIO_CHACRA"].astype(float).iloc[idx_dev])
+        return pipe.predict(Xv.iloc[idx_te])
+
+    p_full = ajusta(features)
+    filas = []
+    for k, cols in dimensiones.items():
+        if k.startswith("X4"):
+            continue
+        p_sin = ajusta([f for f in features if f not in cols])
+        d = sg.perdida_mensual(per, yt, p_sin, p_full)   # > 0 => el modelo completo es mejor
+        h = sg.hac_media(d)
+        lo, hi, _ = sg.bootstrap_bloques_media(d)
+        filas.append({"Dimension": k, "MAE_completo": mean_absolute_error(yt, p_full), "MAE_sin_dim": mean_absolute_error(yt, p_sin),
+                      "R2_completo": r2_score(yt, p_full), "R2_sin_dim": r2_score(yt, p_sin),
+                      "Dif_MAE_mensual": h["media"], "IC95_inf": lo, "IC95_sup": hi,
+                      "p_unilateral_HAC": h["p_unilateral"], "n_meses": h["n_meses"],
+                      "meses_completo_mejor": int((d > 0).sum())})
+    t = pd.DataFrame(filas)
+    t["p_holm"] = sg.holm(t["p_unilateral_HAC"].to_numpy())
+    t["Contribuye"] = np.where(t["p_holm"] < ALPHA, "Sí", "No")
+    t.to_csv(os.path.join(OUT_TAB, f"tabla_contribucion_dimensiones_prueba_{etiqueta}.csv"), index=False)
+    print(t[["Dimension", "Dif_MAE_mensual", "IC95_inf", "IC95_sup", "meses_completo_mejor", "p_holm", "Contribuye"]].to_string(index=False))
+    return t

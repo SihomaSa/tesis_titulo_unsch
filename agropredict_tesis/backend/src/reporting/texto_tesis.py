@@ -299,7 +299,7 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
     L.append("## 4.4. DISCUSIÓN (párrafos de apoyo)\n")
     L.append(f"Los resultados muestran que la {BONITO[dom]} concentra la mayor parte de la capacidad predictiva del modelo, lo que concuerda con "
              f"la fuerte inercia de los precios agrícolas reportada en la literatura. El modelo {'supera' if supera else 'no supera'} al pronóstico ingenuo de persistencia en MAE"
-             f"{' (mejora modesta, de ' + N(mejora_mae,1) + ' %, sin prueba de significancia)' if supera else ''}, "
+             f"{' (mejora modesta, de ' + N(mejora_mae,1) + ' %, la significancia se evalúa en tabla_significancia_vs_baseline.csv)' if supera else ''}, "
              f"por lo que el valor agregado de las técnicas de Machine Learning en este contexto es {'acotado' if supera else 'limitado'}: la mayor parte de la capacidad predictiva proviene de la propia historia de precios. "
              f"Las comparaciones con estudios previos deben hacerse con cautela, porque las métricas dependen del número de cultivos, del horizonte y del esquema de validación.\n")
     L.append("### Limitaciones (4.4.4)\n")
@@ -387,7 +387,7 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
          "Son valores que se fijan antes de entrenar (profundidad, número de árboles, tasa de aprendizaje); los parámetros, en cambio, los aprende el modelo. Se optimizaron con búsqueda aleatoria y validación cruzada temporal solo en entrenamiento (Tabla D)."),
         ("¿Su modelo es mejor que simplemente repetir el último precio?",
          f"{'Ligeramente' if supera else 'No de forma concluyente'}: en prueba el MAE del modelo es {N(m['MAE'])} frente a {N(base['MAE'])} de la persistencia (R² {N(m['R2'])} vs {N(base['R2'])})."
-         + (f" La reducción del MAE es de {N(mejora_mae,1)} %, una mejora modesta cuya significancia estadística no se probó; además la media móvil de 3 obtiene un R² casi igual ({N(mm3['R2'])}). Hay que presentarlo como mejora acotada, no como superioridad rotunda." if supera else " Debe reconocerse como limitación.")),
+         + (f" La reducción del MAE es de {N(mejora_mae,1)} %, una mejora modesta cuya significancia (pérdidas pareadas por mes, errores HAC, IC por bootstrap de bloques) está en tabla_significancia_vs_baseline.csv; además la media móvil de 3 obtiene un R² casi igual ({N(mm3['R2'])}). Hay que presentarlo como mejora acotada, no como superioridad rotunda." if supera else " Debe reconocerse como limitación.")),
         (f"¿Por qué se eligió {nom} si otro modelo tiene mayor R² en prueba?",
          f"La regla de selección (menor MAE en validación) se fijó antes de ver la prueba; elegir en prueba la contaminaría. Mejor R² en prueba entre los modelos de ML: {mejor_r2_test[0]} ({N(mejor_r2_test[1])}); el elegido logra el menor MAE ({N(m['MAE'])}) y el mayor R²_log ({N(m['R2_log'])})." if mejor_r2_test[0] != nom else "El modelo elegido en validación coincide con el de mejor R² en prueba."),
         (f"¿Por qué no se aceptaron {len(rech)} de las hipótesis específicas?" if rech else "¿Se aceptaron todas las hipótesis específicas?",
@@ -398,7 +398,7 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
           " No aceptar una hipótesis específica no invalida el trabajo: indica en qué dimensiones está la información predictiva (" +
           ", ".join(BONITO[k] for k in sig) + ").") if rech else "Sí: las cuatro dimensiones resultaron significativas tras la corrección de Holm."),
         ("¿Por qué el R² completo de la ablation no coincide con el de prueba?",
-         "La ablation se hace con Random Forest en particiones temporales del tramo de desarrollo (entrenamiento + validación), no en el conjunto de prueba; sirve para comparar dimensiones entre sí, no para reportar el desempeño final."),
+         f"La ablation principal se hace con {'LightGBM (misma familia que el modelo final)' if abl.get('clave') == 'lgbm' else 'Random Forest'} en particiones temporales del tramo de desarrollo (entrenamiento + validación), no en el conjunto de prueba; sirve para comparar dimensiones entre sí, no para reportar el desempeño final."),
         ("¿Por qué LightGBM/XGBoost/RF y no una red LSTM?",
          "Los datos son series cortas, irregulares y de muchos cultivos; los modelos de árboles manejan bien variables mixtas y pocos datos. Una LSTM global mezclaría cultivos heterogéneos; se deja como trabajo futuro por cultivo."),
         ("¿Cómo sabe que su R² no depende de los cultivos baratos?",
