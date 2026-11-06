@@ -25,7 +25,7 @@ def _mes_real(df: pd.DataFrame) -> pd.Series:
     return np.where(mes > 12, mes % 100, mes)
 
 
-def load_and_clean(path: str = DATA_PATH):
+def load_and_clean(path: str = DATA_PATH, relajar_cosecha: bool = False, guardar: bool = True):
     df = pd.read_csv(path, low_memory=False)
     embudo = [("Registros iniciales del dataset", len(df))]
 
@@ -42,7 +42,8 @@ def load_and_clean(path: str = DATA_PATH):
     df = df.dropna(subset=["COSECHA", "PRODUCCION", "SIEMBRA"])
     embudo.append(("Con SIEMBRA, COSECHA y PRODUCCION informadas", len(df)))
 
-    df = df[~((df["COSECHA"] == 0) & (df["PRODUCCION"] > 0))]
+    if not relajar_cosecha:   # relajar_cosecha=True solo se usa en el análisis de sensibilidad (Obs. 10)
+        df = df[~((df["COSECHA"] == 0) & (df["PRODUCCION"] > 0))]
     embudo.append(("Sin inconsistencias (COSECHA=0 y PRODUCCION>0)", len(df)))
 
     df = df.drop_duplicates()
@@ -59,7 +60,8 @@ def load_and_clean(path: str = DATA_PATH):
 
     tabla = pd.DataFrame(embudo, columns=["Etapa", "Registros"])
     tabla["Eliminados"] = (-tabla["Registros"].diff()).fillna(0).astype(int)
-    tabla.to_csv(os.path.join(OUT_TAB, "tabla_embudo_depuracion.csv"), index=False)
+    if guardar:
+        tabla.to_csv(os.path.join(OUT_TAB, "tabla_embudo_depuracion.csv"), index=False)
 
     print("[Fase 2-3] Embudo de depuración:")
     for _, r in tabla.iterrows():

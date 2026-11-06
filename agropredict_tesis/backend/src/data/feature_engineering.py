@@ -27,7 +27,7 @@ def _estacion(m):
     return 0 if m in (12, 1, 2) else 1 if m in (3, 4, 5) else 2 if m in (6, 7, 8) else 3
 
 
-def build_features(df: pd.DataFrame):
+def build_features(df: pd.DataFrame, guardar_catalogo: bool = True):
     df = df.copy()
 
     # ---------------- X1 Temporal ----------------
@@ -61,6 +61,15 @@ def build_features(df: pd.DataFrame):
     cols = ["PRECIO_LAG1", "VARIACION_PRECIO_PREVIA", "MEDIA_MOVIL_3",
             "MESES_DESDE_PRECIO_PREVIO", "TIENE_HISTORIAL"]
     df = df.merge(ser[SERIE + ["MES_IDX"] + cols], on=SERIE + ["MES_IDX"], how="left")
+
+    # ---- Obs. 8: X2 REZAGADA (observación previa de la serie). NO entra a `features`:
+    # solo se usa en analysis/robustez.py para comprobar que X2 del mismo mes no genera fuga.
+    x2c = ["SIEMBRA", "COSECHA", "PRODUCCION", "RENDIMIENTO_TON_HA"]
+    x2 = (df.groupby(SERIE + ["MES_IDX"], as_index=False)[x2c].mean().sort_values(SERIE + ["MES_IDX"]))
+    gx = x2.groupby(SERIE)
+    for c in x2c:
+        x2[c + "_PREV"] = gx[c].shift(1)
+    df = df.merge(x2[SERIE + ["MES_IDX"] + [c + "_PREV" for c in x2c]], on=SERIE + ["MES_IDX"], how="left")
     df = df.sort_values(["PERIODO", "CULTIVO", "PROVINCIA", "DISTRITO"]).reset_index(drop=True)
 
     dimensiones = {d["clave"]: list(d["variables"]) for d in MATRIZ_CONSISTENCIA["dimensiones"]}
@@ -75,6 +84,7 @@ def build_features(df: pd.DataFrame):
           f"sin historial previo: {(df['TIENE_HISTORIAL'] == 0).mean() * 100:.1f}% "
           f"| |corr| máx. con el objetivo = {corr_max:.3f}")
 
-    with open(os.path.join(OUT_TAB, "catalogo_codificacion.json"), "w", encoding="utf-8") as f:
-        json.dump(catalogo, f, ensure_ascii=False, indent=1)
+    if guardar_catalogo:   # False en los análisis de sensibilidad: NO debe sobrescribir el catálogo que usa la API
+        with open(os.path.join(OUT_TAB, "catalogo_codificacion.json"), "w", encoding="utf-8") as f:
+            json.dump(catalogo, f, ensure_ascii=False, indent=1)
     return df, features, dimensiones, catalogo

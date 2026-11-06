@@ -16,6 +16,23 @@ import argparse
 import os
 import sys
 
+
+# ---------------------------------------------------------------------------
+# FIX: forzar UTF-8 en stdout/stderr ANTES de cualquier print.
+# Evita UnicodeEncodeError (cp1252) con caracteres como Δ, ², tildes, etc.
+# Debe ejecutarse antes de importar módulos que imprimen al cargarse.
+# ---------------------------------------------------------------------------
+def _forzar_utf8():
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
+
+_forzar_utf8()
+
 os.environ.setdefault("MPLBACKEND", "Agg")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -23,6 +40,8 @@ from src import tracking
 from src.analysis import anomalias, segmentos
 from src.analysis.ablation_study import run_ablation
 from src.analysis.interpretabilidad import interpretar
+from src.analysis import depuracion_sesgo, documentacion, robustez, significancia
+from src.models.evaluacion import baseline_media_movil, baseline_persistencia
 from src.config import DATA_PATH, MATRIZ_CONSISTENCIA, TARGET
 from src.data.data_loader import load_and_clean
 from src.data.feature_engineering import build_features
@@ -38,6 +57,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rapido", action="store_true", help="prueba de humo con menos iteraciones")
     ap.add_argument("--datos", default=DATA_PATH)
+    ap.add_argument("--sin-extras", action="store_true", help="omite los análisis de robustez/significancia (Obs. del jurado)")
     a = ap.parse_args()
 
     print("=" * 78)
@@ -71,6 +91,37 @@ def main():
     t_prov = segmentos.por_provincia(df_te, y_te, res["pred_test"])
     t_seg = segmentos.por_segmento_precio(y_te, res["pred_test"])
     anom = anomalias.detectar(df, X)
+
+    if not a.sin_extras:
+        print("\n[Fase 9b] Observaciones del jurado: significancia, robustez, documentación y sesgo de depuración...")
+        df_te, y_te_, X_te = df.iloc[idx_te], y.iloc[idx_te], X.iloc[idx_te]
+        med_dev = float(y.iloc[idx_dev].median())
+        per_te = df_te["PERIODO"].to_numpy()
+        refs = {"Persistencia": baseline_persistencia(X_te, med_dev), "Media móvil 3": baseline_media_movil(X_te, med_dev)}
+        for k, m_ in res["modelos_finales"].items():
+            if k != res["clave_sel"]:
+                refs[NOMBRES[k]] = m_.predict(X_te)
+        print("\n[Obs.1,3] Significancia frente a baselines y otros modelos (pérdidas pareadas por mes, HAC, bloques)")
+        significancia.reporte_prueba(per_te, y_te_.to_numpy(), res["pred_test"], res["nombre_sel"], refs)
+
+        p_lgbm = res["mejores_params"]["lgbm"]
+        robustez.ablaciones(X, y, idx_dev, features, dimensiones, p_lgbm, a.rapido)                    # Obs. 2 y 9
+        print("\n[Obs.1] Contribución de cada dimensión EN PRUEBA (LightGBM, pareado por mes)")
+        robustez.contribucion_en_prueba(df, y, idx_dev, idx_te, features, dimensiones, p_lgbm, a.rapido)
+        print("\n[Obs.8] Variante con X2 rezagada")
+        robustez.variante_x2_rezagada(df, y, idx_dev, idx_te, features, dimensiones, p_lgbm, a.rapido)
+
+        print("\n[Obs.11] Particiones")
+        documentacion.tabla_particiones(df, idx_tr, idx_va, idx_te)
+        print("\n[Obs.4] MAE por brecha al precio previo")
+        documentacion.mae_por_brecha(df_te, y_te_, res["pred_test"], refs["Persistencia"])
+        print("\n[Obs.12] SHAP e importancia comparada")
+        documentacion.shap_detalle(interp, features, dimensiones)
+        documentacion.importancia_comparada(interp, abl, dimensiones)
+
+        print("\n[Obs.10] Sesgo por depuración")
+        depuracion_sesgo.diagnostico(a.datos)
+        depuracion_sesgo.sensibilidad(a.datos)
 
     # Figuras
     fg.fig_flujo_metodologico()

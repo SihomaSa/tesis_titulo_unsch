@@ -1,0 +1,2 @@
+Modelo,R2_prueba,IC95_inf,IC95_sup,Umbral,Decision_HGa,n_meses,bloque_meses
+LightGBM sobre persistencia,0.7774559540422887,0.690832533746303,0.8144715330089862,0.85,Se rechaza (IC superior < umbral),16,3

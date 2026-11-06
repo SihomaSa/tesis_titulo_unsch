@@ -1,0 +1,5 @@
+Dimension,Ganancia_pct,SHAP_pct,Permutacion_caida_R2,Ablacion_dif_R2,Aporte_incremental_R2,Concepto
+X1_Temporal,18.352796954269955,22.550432953309706,2.2345849505667204e-05,0.0003424438953121278,-0.0014003429809128498,"Importancia predictiva (ganancia, SHAP, permutación) vs aporte incremental (ablación, incremental). Ninguna mide efecto causal."
+X2_Productiva,23.20323571990234,6.338078677021676,0.004339087314742041,-0.012368806414296274,-0.019498050196681604,"Importancia predictiva (ganancia, SHAP, permutación) vs aporte incremental (ablación, incremental). Ninguna mide efecto causal."
+X3_Geografica,18.69317649451026,11.558605247127328,0.024983908443586243,0.030662174163431644,0.006143657565267913,"Importancia predictiva (ganancia, SHAP, permutación) vs aporte incremental (ablación, incremental). Ninguna mide efecto causal."
+X4_Economica_Historica,39.75079083131744,59.552883122541274,1.3209674239281473,0.1014825097332408,,"Importancia predictiva (ganancia, SHAP, permutación) vs aporte incremental (ablación, incremental). Ninguna mide efecto causal."

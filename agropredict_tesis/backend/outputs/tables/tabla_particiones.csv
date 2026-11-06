@@ -1,0 +1,4 @@
+Conjunto,Desde,Hasta,n_registros,pct_del_total,meses_distintos,series_cultivo_distrito,pct_con_historial_previo,brecha_mediana_meses_al_precio_previo
+Entrenamiento,201508,202205,10143,70.47175710414784,82,1171,88.45509218180025,5.0
+Validación,202206,202308,2102,14.604321545195582,15,889,97.47859181731684,5.0
+Prueba,202309,202412,2148,14.923921350656569,16,830,97.8584729981378,3.0
