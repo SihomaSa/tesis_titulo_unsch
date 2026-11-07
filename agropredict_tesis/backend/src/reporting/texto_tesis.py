@@ -14,6 +14,7 @@ import pandas as pd
 
 from src.config import ALPHA, MATRIZ_CONSISTENCIA, OUT_TXT, UMBRAL_R2_OFICIAL
 from src.models.pipelines import NOMBRES
+from src.reporting import texto_robustez as rb
 
 N = lambda v, d=4: f"{v:.{d}f}"
 P = lambda v: ("<0.001" if v < 0.001 else f"{v:.3f}")
@@ -41,6 +42,27 @@ def _md_tabla(df, formatos=None):
     return "\n".join([cab, sep] + filas)
 
 
+def _inline(par, texto, size=None, negrita=False):
+    """Convierte **negrita**, *cursiva* y `código` de markdown en formato real de Word."""
+    import re
+    from docx.shared import Pt
+    for tok in re.split(r"(\*\*[^*]+\*\*|\*[^*\n]+\*|`[^`]+`)", texto):
+        if not tok:
+            continue
+        if tok.startswith("**") and tok.endswith("**") and len(tok) > 4:
+            r = par.add_run(tok[2:-2]); r.bold = True
+        elif tok.startswith("`") and tok.endswith("`") and len(tok) > 2:
+            r = par.add_run(tok[1:-1]); r.font.name = "Consolas"
+        elif tok.startswith("*") and tok.endswith("*") and len(tok) > 2:
+            r = par.add_run(tok[1:-1]); r.italic = True
+        else:
+            r = par.add_run(tok)
+        if size:
+            r.font.size = Pt(size)
+        if negrita:
+            r.bold = True
+
+
 def _a_docx(md: str, ruta: str):
     from docx import Document
     from docx.shared import Pt
@@ -59,21 +81,21 @@ def _a_docx(md: str, ruta: str):
             t = doc.add_table(rows=len(filas), cols=len(filas[0])); t.style = "Table Grid"
             for r, fila in enumerate(filas):
                 for c, val in enumerate(fila):
-                    t.cell(r, c).text = val
-                    for p in t.cell(r, c).paragraphs:
-                        for run in p.runs:
-                            run.font.size = Pt(9); run.bold = (r == 0)
+                    celda = t.cell(r, c)
+                    celda.text = ""
+                    _inline(celda.paragraphs[0], val, size=9, negrita=(r == 0))
             continue
         if l.startswith("### "): doc.add_heading(l[4:], 3)
         elif l.startswith("## "): doc.add_heading(l[3:], 2)
         elif l.startswith("# "): doc.add_heading(l[2:], 1)
-        elif l.startswith("- "): doc.add_paragraph(l[2:].replace("**", ""), style="List Bullet")
-        elif l.strip(): doc.add_paragraph(l.replace("**", ""))
+        elif l.startswith("- "): _inline(doc.add_paragraph(style="List Bullet"), l[2:])
+        elif l.strip(): _inline(doc.add_paragraph(), l)
         i += 1
     doc.save(ruta)
 
 
 def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom, features, dimensiones, rapido):
+    T = rb.cargar()
     nom = res["nombre_sel"]
     ft, fv = res["filas_test"], res["filas_val"]
     m = ft[nom]
@@ -106,7 +128,9 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
     L.append("# TEXTO PARA LA TESIS — generado automáticamente con los resultados de tu corrida\n")
     L.append(aviso)
     L.append("**Cómo usarlo:** pega cada sección en el capítulo indicado. Los números ya coinciden con las tablas y "
-             "figuras de `outputs/`. Reemplaza las tablas y figuras antiguas por las nuevas.\n")
+             "figuras de `outputs/`. Reemplaza las tablas y figuras antiguas por las nuevas. "
+             "Las tablas K–S (particiones, significancia, brecha, contribuciones, sensibilidad, decisión) tienen letras provisionales: renumera todas en orden de aparición en tu documento. "
+             "Donde veas [COMPLETAR] o [VERIFICAR] falta información que el pipeline no tiene (antecedentes, fechas de publicación, fuente del umbral): no la inventes.\n")
 
     # ------------------------------------------------------------------ 4.1
     L.append("# CAPÍTULO IV — RESULTADOS Y DISCUSIÓN\n")
@@ -123,7 +147,7 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
         ["4. Construcción del pipeline", "Imputación, escalado y codificación encapsuladas con el modelo", "Pipeline de scikit-learn", "Pedregosa et al. (2011)"],
         ["5. Modelado", "Random Forest, XGBoost, LightGBM y Regresión Lineal frente a dos baselines", "scikit-learn, xgboost, lightgbm", "Chen y Guestrin (2016)"],
         ["6. Ajuste de hiperparámetros", "Búsqueda aleatoria con validación cruzada temporal", "RandomizedSearchCV + TimeSeriesSplit", "Bergstra y Bengio (2012)"],
-        ["7. Evaluación", "R², MAE, RMSE y MAPE; contraste de hipótesis (Wilcoxon + Holm)", "scikit-learn, SciPy", "Sokolova y Lapalme (2009)"],
+        ["7. Evaluación", "R², MAE, RMSE y MAPE; contraste de hipótesis (Wilcoxon + Holm); pérdidas pareadas con errores HAC", "scikit-learn, SciPy", "Hyndman y Koehler (2006); Holm (1979); Newey y West (1987) [VERIFICAR cada cita]"],
         ["8. Interpretabilidad", "Valores SHAP y permutación agrupada por dimensión", "shap", "Lundberg y Lee (2017)"],
         ["9. Validación y despliegue", "Evaluación final en prueba, API REST y aplicación web", "FastAPI, Firebase, Railway", "Géron (2023)"],
     ], columns=["Fase", "Descripción", "Técnicas / herramientas", "Base científica"])
@@ -148,6 +172,7 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
     L.append("**Tabla B.** Embudo de depuración de los datos\n")
     L.append(_md_tabla(embudo, {"Registros": MILES, "Eliminados": MILES}) + "\n")
     L.append("*Nota.* Los registros sin precio no se imputaron: un precio inventado no es una observación y sesgaría la variable que se desea predecir. Elaboración propia.\n")
+    L.extend(rb.bloque_depuracion(T))
 
     L.append("### 4.1.3. Fase 3 — Preparación de los datos\n")
     L.append(f"Se corrigió el formato de la variable MES del dataset oficial (AAAAMM) para extraer el mes calendario, y se construyeron las "
@@ -164,6 +189,7 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
              f"({MILES(sp['n_train'])} registros, {MES(sp['train_desde'])} a {MES(sp['train_hasta'])}), validación "
              f"({MILES(sp['n_val'])}, hasta {MES(sp['val_hasta'])}) y prueba ({MILES(sp['n_test'])}, hasta {MES(sp['test_hasta'])}), "
              f"aproximadamente 70 %, 15 % y 15 %. El conjunto de prueba no intervino en el ajuste ni en la selección del modelo.\n")
+    L.extend(rb.bloque_particiones(T))
 
     L.append("### 4.1.4. Fase 4 — Construcción del pipeline\n")
     L.append("El preprocesamiento (imputación por mediana, escalado y codificación one-hot para la regresión lineal) y el estimador se encapsularon en "
@@ -246,94 +272,40 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
              f"para revisión manual: **la proporción de errores de registro y eventos reales debe volver a calcularla el autor sobre esa muestra** "
              f"(`muestra_50_anomalias_revision_manual.csv`), pues el conjunto de anomalías cambió respecto de la versión anterior.\n")
     L.append("**Figura H.** Distribución de precios normales y anómalos. → `figura_anomalias_isolation_forest.png`\n")
+    L.append("### 4.2.5. Significancia de la mejora frente a los baselines\n")
+    L.extend(rb.bloque_significancia(T, nom, base, m, UMBRAL_R2_OFICIAL))
+    L.extend(rb.bloque_brecha(T))
 
     # ------------------------------------------------------------------ 4.3 hipótesis
     L.append("## 4.3. CONTRASTACIÓN DE HIPÓTESIS\n")
-    L.append(f"Para evaluar la influencia de cada dimensión se entrenaron, con los hiperparámetros ya optimizados, variantes del Random Forest que excluyen una dimensión "
-             f"a la vez, y se compararon con el modelo completo en {abl['n_splits']} particiones temporales del tramo de desarrollo (entrenamiento y validación; la prueba no se usó). "
-             f"Se aplicó la prueba de rangos con signo de Wilcoxon para muestras pareadas, unilateral (la hipótesis plantea que excluir la dimensión empeora el R²), con corrección "
-             f"de Holm por las cuatro comparaciones (α = {ALPHA}). Con {abl['n_splits']} particiones el p-valor mínimo alcanzable es {2**-abl['n_splits']:.5f}, "
-             + ("de modo que la prueba tiene poder para detectar efectos consistentes, incluso después de la corrección de Holm.\n"
-                if 4 * 2.0 ** -abl["n_splits"] < ALPHA else
-                "insuficiente para alcanzar significancia tras la corrección de Holm: esta corrida reducida no sirve para concluir.\n"))
-    tabla = ab.reset_index()[["Dimension", "R2_completo", "R2_sin_dim", "Diferencia_R2", "p_valor", "p_holm", "Significativa_estadistica"]]
-    tabla.columns = ["Dimensión excluida", "R² completo", "R² sin la dimensión", "ΔR²", "p (Wilcoxon)", "p (Holm)", "¿Significativa?"]
-    L.append("**Tabla I.** Ablation por dimensión y significancia estadística\n")
-    L.append(_md_tabla(tabla, {"p (Wilcoxon)": P, "p (Holm)": P}) + "\n")
-    L.append("*Nota.* Prueba unilateral; Holm sobre 4 comparaciones. Elaboración propia.\n")
-    comp = ab.reset_index()[["Dimension", "R2_solo_dim", "R2_X4_mas_dim", "Aporte_incremental_R2", "p_incremental_holm"]]
-    comp.columns = ["Dimensión", "R² solo con la dimensión", "R² de X4 + dimensión", "Aporte sobre X4", "p (Holm)"]
-    L.append("Para interpretar los resultados se añadieron dos análisis complementarios: el poder predictivo de cada dimensión por sí sola y su aporte incremental cuando ya se conoce la historia de precios (X4).\n")
-    L.append("**Tabla J.** Poder predictivo propio y aporte incremental de cada dimensión\n")
-    L.append(_md_tabla(comp, {"p (Holm)": P}) + "\n")
+    _alg = {"lgbm": "LightGBM (misma familia que el modelo final)", "rf": "Random Forest"}.get(abl.get("clave"), "el algoritmo indicado")
+    clasif = rb.clasificar(T, ALPHA)
+    L.append(f"Para evaluar la contribución predictiva de cada dimensión se entrenaron, con los hiperparámetros ya optimizados, variantes de {_alg} que excluyen una dimensión \n"
+             f"a la vez, y se compararon con el modelo completo en {abl['n_splits']} particiones temporales del tramo de desarrollo (entrenamiento y validación; la prueba no se usó en este contraste). \n"
+             f"Se aplicó la prueba de rangos con signo de Wilcoxon para muestras pareadas, unilateral, con corrección de Holm (α = {ALPHA}). Con {abl['n_splits']} particiones el p-valor mínimo alcanzable es {2**-abl['n_splits']:.5f}. \n"
+             "Los resultados se replicaron en el conjunto de prueba y sobre el modelo final con pérdidas pareadas por mes, y con Random Forest como análisis de robustez (`tabla_ablation_wilcoxon.csv`).\n")
+    L.extend(rb.bloque_hipotesis(T, clasif, ALPHA, nom, base, m, mm3, UMBRAL_R2_OFICIAL, cumple))
+    if T["abl_lgbm"] is None:   # respaldo si no se corrieron los extras (--sin-extras)
+        tabla = ab.reset_index()[["Dimension", "R2_completo", "R2_sin_dim", "Diferencia_R2", "p_valor", "p_holm", "Significativa_estadistica"]]
+        tabla.columns = ["Dimensión excluida", "R² completo", "R² sin la dimensión", "ΔR²", "p (Wilcoxon)", "p (Holm)", "¿Significativa?"]
+        L.append("**Tabla I.** Ablation por dimensión y significancia estadística\n")
+        L.append(_md_tabla(tabla, {"p (Wilcoxon)": P, "p (Holm)": P}) + "\n")
+        L.append("*Nota.* Corrida sin análisis extra (`--sin-extras`): faltan los contrastes en prueba, sobre el modelo final y las significancias frente a baselines.\n")
     L.append("**Figura I.** Ablation por dimensión. → `figura_ablation_por_dimension.png`\n")
-
-    L.append("### 4.3.1. Hipótesis general\n")
-    L.append(f"**{'ACEPTADA' if cumple else 'NO ACEPTADA'}.** El modelo que integra las cuatro dimensiones del entorno agroeconómico alcanzó R² = {N(m['R2'])} en datos no vistos, "
-             f"{'superior' if cumple else 'inferior'} al criterio de R² ≥ {UMBRAL_R2_OFICIAL}" +
-             (f", y {'reduce' if supera else 'no reduce'} el error frente al pronóstico ingenuo de persistencia" + (f" en {N(mejora_mae,1)} %" if supera else "") + ".\n"))
-
-    L.append("### 4.3.2. Hipótesis específicas\n")
     nombres_h = {"X1_Temporal": "H1 — Dimensión temporal", "X2_Productiva": "H2 — Dimensión productiva",
                  "X3_Geografica": "H3 — Dimensión geográfica", "X4_Economica_Historica": "H4 — Dimensión económica histórica"}
-    for k in claves:
-        r = ab.loc[k]
-        es_sig = r["p_holm"] < ALPHA
-        txt = f"**{nombres_h[k]}: {'ACEPTADA' if es_sig else 'NO ACEPTADA'}** (ΔR² = {N(r['Diferencia_R2'])}; p = {P(r['p_valor'])}; p Holm = {P(r['p_holm'])}). "
-        if es_sig:
-            txt += (f"Excluir la dimensión reduce el R² de {N(r['R2_completo'])} a {N(r['R2_sin_dim'])}, de forma consistente en las particiones temporales. "
-                    f"Por sí sola alcanza R² = {N(r['R2_solo_dim'])}.")
-        else:
-            txt += f"No hay evidencia de que excluir la dimensión empeore de manera significativa el modelo. "
-            if r["R2_solo_dim"] >= 0.30:
-                txt += (f"Esto no significa que carezca de información: por sí sola alcanza R² = {N(r['R2_solo_dim'])}. "
-                        f"Su información es en gran parte redundante con la historia de precios, que ya incorpora el efecto de la estacionalidad, "
-                        f"la ubicación y la oferta pasadas; por eso, con X4 presente, su aporte marginal es {N(r['Aporte_incremental_R2']) if pd.notna(r['Aporte_incremental_R2']) else 'no aplicable'} de R².")
-            else:
-                txt += (f"Por sí sola su capacidad predictiva es limitada (R² = {N(r['R2_solo_dim'])}) y, con X4 presente, aporta "
-                        f"{N(r['Aporte_incremental_R2']) if pd.notna(r['Aporte_incremental_R2']) else 'no aplica'} de R² adicional.")
-        L.append(txt + "\n")
-    L.append("*Nota.* La no aceptación de una hipótesis específica indica ausencia de aporte predictivo incremental detectable en este conjunto de datos, no ausencia de relación económica.\n")
 
     # ------------------------------------------------------------------ 4.4 discusión
-    L.append("## 4.4. DISCUSIÓN (párrafos de apoyo)\n")
-    L.append(f"Los resultados muestran que la {BONITO[dom]} concentra la mayor parte de la capacidad predictiva del modelo, lo que concuerda con "
-             f"la fuerte inercia de los precios agrícolas reportada en la literatura. El modelo {'supera' if supera else 'no supera'} al pronóstico ingenuo de persistencia en MAE"
-             f"{' (mejora modesta, de ' + N(mejora_mae,1) + ' %, la significancia se evalúa en tabla_significancia_vs_baseline.csv)' if supera else ''}, "
-             f"por lo que el valor agregado de las técnicas de Machine Learning en este contexto es {'acotado' if supera else 'limitado'}: la mayor parte de la capacidad predictiva proviene de la propia historia de precios. "
-             f"Las comparaciones con estudios previos deben hacerse con cautela, porque las métricas dependen del número de cultivos, del horizonte y del esquema de validación.\n")
-    L.append("### Limitaciones (4.4.4)\n")
-    L.append("- No se incorporaron variables climáticas (SENAMHI, ONI) ni de mercado externas.\n"
-             "- La dimensión geográfica usa codificación ordinal de provincia, distrito y cultivo, sin coordenadas ni embeddings.\n"
-             "- Los precios solo existen cuando hubo cosecha efectiva; las series por cultivo-distrito son irregulares (variable MESES_DESDE_PRECIO_PREVIO).\n"
-             f"- El desempeño es menor en cultivos de alto valor y baja frecuencia (Tabla H).\n"
-             "- La validación es retrospectiva; no se evaluó deriva conceptual en producción.\n")
+    L.extend(rb.bloque_discusion(T, clasif, nom, m, base, UMBRAL_R2_OFICIAL, cumple, mejor_r2_test))
+    L.extend(rb.limitaciones(T))
 
     # ------------------------------------------------------------------ 5 conclusiones
     L.append("# CAPÍTULO V — CONCLUSIONES\n")
-    L.append(f"1. **Objetivo general.** Se desarrolló y validó, con una metodología de nueve fases (CRISP-DM + KDD), un modelo de predicción del precio en chacra para la región Piura. "
-             f"El modelo seleccionado en validación fue {nom}, que en el conjunto de prueba (n = {MILES(sp['n_test'])}) obtuvo R² = {N(m['R2'])}, MAE = {N(m['MAE'])} S/ por kg, "
-             f"RMSE = {N(m['RMSE'])} S/ por kg y MAPE = {N(m['MAPE'],2)} %; el criterio R² ≥ {UMBRAL_R2_OFICIAL} {'se cumple' if cumple else 'no se cumple'}.\n")
-    L.append(f"2. **Comparación con referencias.** Frente al pronóstico ingenuo de persistencia, {nom} "
-             f"{'reduce el MAE en ' + N(mejora_mae,1) + ' %' if supera else 'no reduce el MAE (' + N(m['MAE']) + ' frente a ' + N(base['MAE']) + ')'}"
-             f" y {'mejora' if m['R2'] > base['R2'] else 'no mejora'} el R² ({N(m['R2'])} frente a {N(base['R2'])}); "
-             f"frente a la regresión lineal, el R² es {N(m['R2'])} contra {N(ft['Regresión Lineal']['R2'])}.\n")
-    for i, k in enumerate(claves, 3):
-        r = ab.loc[k]
-        es_sig = r["p_holm"] < ALPHA
-        L.append(f"{i}. **{nombres_h[k].split(' — ')[1]}.** "
-                 + (f"Influye de forma estadísticamente significativa: excluirla reduce el R² en {N(r['Diferencia_R2'])} (p Holm = {P(r['p_holm'])}). " if es_sig else
-                    f"No alcanzó significancia estadística tras la corrección de Holm (ΔR² = {N(r['Diferencia_R2'])}; p Holm = {P(r['p_holm'])}); revisa que la corrida use todas las particiones. " if k == "X4_Economica_Historica" else
-                    f"No se encontró aporte incremental significativo (ΔR² = {N(r['Diferencia_R2'])}; p Holm = {P(r['p_holm'])}). "
-                    + (f"Por sí sola tiene capacidad predictiva (R² = {N(r['R2_solo_dim'])}), pero esa información ya está contenida en la historia de precios, de modo que se interpreta como redundancia y no como irrelevancia. "
-                       if r["R2_solo_dim"] >= 0.30 else
-                       f"Por sí sola su capacidad predictiva es nula o muy baja (R² = {N(r['R2_solo_dim'])}) y, con la historia de precios presente, no mejora el modelo (aporte = {N(r['Aporte_incremental_R2'])}); "
-                       f"en este conjunto de datos la dimensión no aporta información que el precio pasado no contenga, sin que ello implique ausencia de relación económica. "))
-                 + "\n")
-    L.append(f"7. **Interpretabilidad.** La dimensión {BONITO[dom]} es la de mayor peso " +
-             (f"({N(ref_dim[dom]*100,1)} % de la contribución SHAP)" if shp else f"({N(ref_dim[dom]*100,1)} % de la importancia)") + ".\n")
-    L.append(f"8. **Anomalías.** Isolation Forest marcó {N(anom['pct'],2)} % de los registros; los anómalos tienen un precio medio de S/ {N(anom['precio_anomalo'],3)} frente a S/ {N(anom['precio_normal'],3)} de los normales.\n")
-    L.append("9. **Sistema web.** *(Completar con las mediciones propias: tiempo de respuesta, disponibilidad y SUS; no provienen de este pipeline y deben respaldarse con evidencia.)*\n")
+    _shp = (f"La dimensión {BONITO[dom]} es la de mayor peso ({N(ref_dim[dom]*100,1)} % de la contribución SHAP, en escala log-ratio respecto de la persistencia)." if shp
+            else f"La dimensión {BONITO[dom]} es la de mayor peso ({N(ref_dim[dom]*100,1)} % de la importancia por ganancia).")
+    for linea in rb.conclusiones(T, clasif, nom, m, base, ft, UMBRAL_R2_OFICIAL, cumple, mejor_r2_test, _shp, anom, sp["n_test"]):
+        L.append(linea + "\n")
+    L.extend(rb.bloque_capitulo3(T, UMBRAL_R2_OFICIAL))
 
     # ------------------------------------------------------------------ correcciones
     L.append("# CORRECCIONES QUE DEBES HACER EN OTRAS SECCIONES (no se pegan: se aplican)\n")
@@ -347,7 +319,8 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
              f"- **LSTM:** el borrador menciona LSTM (R²=0.0812) pero el código no lo contiene; elimina esas frases o añade el experimento.\n"
              f"- **Tablas 3, 4 y 5:** las tres tienen el mismo título; usa las Tablas D, E y F.\n"
              f"- **3.7.2.3:** intervalos de confianza, Redis y Recharts/Leaflet/Angular: la API ahora devuelve un intervalo empírico del 90 %; Redis y Angular no están implementados en el repositorio — retíralos del texto o impleméntalos.\n"
-             f"- **Tabla 10 (SUS, uptime, 287 ms):** no provienen del pipeline; ten a mano la evidencia (encuestas, logs).\n")
+             f"- **Tabla 10 (SUS, uptime, 287 ms):** no provienen del pipeline; ten a mano la evidencia (encuestas, logs).\n"
+             + rb.CORRECCIONES_EXTRA)
     md = "\n".join(L)
     ruta_md = os.path.join(OUT_TXT, "texto_resultados_y_conclusiones.md")
     with open(ruta_md, "w", encoding="utf-8") as f:
@@ -370,6 +343,7 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
             "p_valor": float(ab.loc[d["clave"], "p_holm"]),
             "significativa_wilcoxon": "Sí" if ab.loc[d["clave"], "p_holm"] < ALPHA else "No",
             "importancia_gini_dimension": float(imp_dim[d["clave"]]),
+            "estado_consistencia": (clasif or {}).get(d["clave"], {}).get("estado", "no evaluado (corrida sin extras)"),
         } for d in MATRIZ_CONSISTENCIA["dimensiones"]],
     }
     import json
@@ -382,21 +356,15 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
         ("¿Qué metodología siguió para construir el modelo?",
          "CRISP-DM complementado con KDD y las prácticas de Géron (2023), en nueve fases: problema, datos, preparación, pipeline, modelado, ajuste de hiperparámetros, evaluación, interpretabilidad y validación/despliegue. Cada fase tiene respaldo bibliográfico (Tabla A)."),
         ("¿Cómo evitó la fuga de datos?",
-         "Tres controles: (1) las variables históricas usan solo precios de períodos anteriores; (2) la partición es cronológica 70/15/15 sin mezclar períodos; (3) imputación y escalado viven dentro del Pipeline y se ajustan solo con entrenamiento. La prueba se usó una sola vez."),
+         "Tres controles: (1) las variables históricas usan solo precios de períodos anteriores; (2) la partición es cronológica 70/15/15 sin mezclar períodos; (3) imputación y escalado viven dentro del Pipeline y se ajustan solo con entrenamiento. La prueba se usó una sola vez. Además, como la dimensión productiva (X2) es contemporánea al precio, se repitió la evaluación con X2 rezagada y sin X2: el desempeño no cambia de forma concluyente (Tabla P)."),
         ("¿Qué son los hiperparámetros y cómo los eligió?",
          "Son valores que se fijan antes de entrenar (profundidad, número de árboles, tasa de aprendizaje); los parámetros, en cambio, los aprende el modelo. Se optimizaron con búsqueda aleatoria y validación cruzada temporal solo en entrenamiento (Tabla D)."),
         ("¿Su modelo es mejor que simplemente repetir el último precio?",
-         f"{'Ligeramente' if supera else 'No de forma concluyente'}: en prueba el MAE del modelo es {N(m['MAE'])} frente a {N(base['MAE'])} de la persistencia (R² {N(m['R2'])} vs {N(base['R2'])})."
-         + (f" La reducción del MAE es de {N(mejora_mae,1)} %, una mejora modesta cuya significancia (pérdidas pareadas por mes, errores HAC, IC por bootstrap de bloques) está en tabla_significancia_vs_baseline.csv; además la media móvil de 3 obtiene un R² casi igual ({N(mm3['R2'])}). Hay que presentarlo como mejora acotada, no como superioridad rotunda." if supera else " Debe reconocerse como limitación.")),
+         rb.qa_baseline(T, m, base, mm3)),
         (f"¿Por qué se eligió {nom} si otro modelo tiene mayor R² en prueba?",
          f"La regla de selección (menor MAE en validación) se fijó antes de ver la prueba; elegir en prueba la contaminaría. Mejor R² en prueba entre los modelos de ML: {mejor_r2_test[0]} ({N(mejor_r2_test[1])}); el elegido logra el menor MAE ({N(m['MAE'])}) y el mayor R²_log ({N(m['R2_log'])})." if mejor_r2_test[0] != nom else "El modelo elegido en validación coincide con el de mejor R² en prueba."),
-        (f"¿Por qué no se aceptaron {len(rech)} de las hipótesis específicas?" if rech else "¿Se aceptaron todas las hipótesis específicas?",
-         (f"Las dimensiones {', '.join(BONITO[k] for k in rech)} no alcanzaron significancia tras la corrección de Holm. " +
-          " ".join(f"{BONITO[k].capitalize()}: sola alcanza R² = {N(ab.loc[k,'R2_solo_dim'])} y con X4 aporta {N(ab.loc[k,'Aporte_incremental_R2'])}, " +
-                   ("es decir, su información ya está en el precio pasado (redundancia)." if ab.loc[k,'R2_solo_dim'] >= 0.30 else "es decir, no añade información que el precio pasado no tenga.")
-                   for k in rech) +
-          " No aceptar una hipótesis específica no invalida el trabajo: indica en qué dimensiones está la información predictiva (" +
-          ", ".join(BONITO[k] for k in sig) + ").") if rech else "Sí: las cuatro dimensiones resultaron significativas tras la corrección de Holm."),
+        ("¿Qué hipótesis específicas se respaldaron y cuáles no?",
+         rb.qa_hipotesis(clasif, T)),
         ("¿Por qué el R² completo de la ablation no coincide con el de prueba?",
          f"La ablation principal se hace con {'LightGBM (misma familia que el modelo final)' if abl.get('clave') == 'lgbm' else 'Random Forest'} en particiones temporales del tramo de desarrollo (entrenamiento + validación), no en el conjunto de prueba; sirve para comparar dimensiones entre sí, no para reportar el desempeño final."),
         ("¿Por qué LightGBM/XGBoost/RF y no una red LSTM?",
@@ -412,11 +380,25 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
     ]
     if not cumple:
         qa.insert(0, (f"¿Por qué el R² ({N(m['R2'])}) no alcanza el criterio de {UMBRAL_R2_OFICIAL}?",
-            f"El criterio se fijó a priori en la sección 3.6.3 y se reporta tal cual: la hipótesis general no se acepta con ese umbral. Contexto verificable: "
+            f"El criterio figura en la sección 3.6.3 y se reporta tal cual: la hipótesis de eficacia no se respalda con ese umbral [VERIFICA y di con honestidad de dónde sale: antecedente, estándar técnico o decisión metodológica previa a ver la prueba]. Contexto verificable: "
             f"(1) repetir el último precio ya da R² = {N(base['R2'])}: la inercia de los precios explica gran parte de la varianza; "
             f"(2) el R² global se apoya en distinguir cultivos baratos de caros: dentro de cada segmento el R² es menor (Tabla H: {N(seg_bajo)} en precios bajos y {N(seg_alto)} en altos); "
-            f"(3) el estudio de Fuentes et al. (2025), citado en el marco referencial, reporta R² = 0.788; compara con cautela porque cultivos, horizonte y validación difieren. "
+            f"(3) el estudio de Fuentes et al. (2025), citado en el marco referencial, reporta R² = 0.788 [VERIFICA la cifra y la cita contra la fuente antes de usarla]; compara con cautela porque cultivos, horizonte y validación difieren. "
             f"No se debe modificar el umbral después de ver los resultados sin acuerdo explícito del asesor y del jurado; lo defendible es discutir la brecha y proponer mejoras (variables climáticas, modelos por cultivo)."))
+    qa += [
+        ("¿Por qué las hipótesis específicas ya no dicen «influye»?",
+         "Porque el estudio es observacional: una dimensión que mejora el pronóstico fuera de muestra tiene contribución predictiva, pero eso no prueba causalidad. Las hipótesis se contrastan en validación temporal, en prueba y sobre el modelo final (Tabla S)."),
+        ("¿Cómo sabe que X2 no filtra información del futuro?",
+         "X2 es contemporánea al precio, así que se repitió la evaluación con X2 rezagada y sin X2 (Tabla P): no hay diferencia concluyente. El desempeño no depende de información contemporánea y, de hecho, X2 no aporta."),
+        ("¿Por qué la dimensión geográfica cambia entre validación y prueba?",
+         "En validación el efecto es del cultivo y aparece cuando hay menos precios previos; en prueba es del territorio. El cultivo funciona como sustituto del nivel de precio cuando falta historial. La evidencia es inestable y no se afirma que X3 contribuya al modelo final."),
+        ("¿La muestra final no está sesgada si conserva solo el 11.6 %?",
+         "Sí, hay selección fuerte por cultivo (V de Cramér alta en la regla de cosecha). Se reportan los motivos de exclusión, la distribución antes/después y una sensibilidad que relaja la regla (Tablas Q y R); la conclusión cualitativa se mantiene con margen menor, pero los resultados no se generalizan a todos los cultivos."),
+        ("¿Qué horizonte predice el modelo?",
+         "La siguiente observación disponible de cada serie cultivo–provincia–distrito, dado su último precio observado. La distancia puede ser mayor de un mes; por eso se reporta el error por brecha (Tabla M)."),
+        ("¿Sus resultados demuestran beneficios económicos para el agricultor?",
+         "No. Demuestran desempeño técnico en un conjunto de prueba retrospectivo. El beneficio económico requiere evaluación con usuarios o datos operativos."),
+    ]
     for q, a in qa:
         G.append(f"## {q}\n{a}\n")
     ruta_g = os.path.join(OUT_TXT, "guia_sustentacion.md")

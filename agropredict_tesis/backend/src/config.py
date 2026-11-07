@@ -65,14 +65,20 @@ COLORES = {
 _dim = lambda nombre: {
     "problema_especifico": f"¿Cómo influye la dimensión {nombre} del entorno agroeconómico en la predicción de precios agrícolas mediante técnicas de Machine Learning?",
     "objetivo_especifico": f"Evaluar la influencia de la dimensión {nombre} del entorno agroeconómico en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
-    "hipotesis_especifica": f"La dimensión {nombre} del entorno agroeconómico influye significativamente en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
+    # Obs. 1 del jurado: «influye significativamente» sugería causalidad; se reformula como contribución predictiva.
+    "hipotesis_especifica": f"Excluir la dimensión {nombre} del entorno agroeconómico empeora el pronóstico fuera de muestra del precio agrícola; es decir, la dimensión {nombre} contribuye predictivamente (sin implicar causalidad).",
+    "hipotesis_especifica_original": f"La dimensión {nombre} del entorno agroeconómico influye significativamente en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
 }
 
 MATRIZ_CONSISTENCIA = {
     "titulo": "Sistema web para la predicción de precios agrícolas mediante técnicas de Machine Learning, Piura, 2025",
     "problema_general": "¿En qué medida las dimensiones del entorno agroeconómico influyen en la precisión de la predicción de los precios agrícolas mediante técnicas de Machine Learning en la región Piura, 2025?",
     "objetivo_general": "Determinar la influencia del entorno agroeconómico en la eficacia de las técnicas de Machine Learning para la predicción de precios agrícolas en la región Piura, 2025.",
-    "hipotesis_general": "El entorno agroeconómico influye significativamente en las técnicas de Machine Learning para la predicción eficaz de precios agrícolas en la región Piura, 2025.",
+    # Obs. 1: la hipótesis general se separa en eficacia (HG-a) y superación de baselines (HG-b); las dimensiones se contrastan en H1–H4.
+    "hipotesis_general": "HG-a: el modelo de Machine Learning seleccionado alcanza un R² ≥ 0.85 en datos no vistos de la región Piura. HG-b: el modelo reduce el error de pronóstico frente a los baselines de persistencia y media móvil.",
+    "hipotesis_general_a": "El modelo de Machine Learning seleccionado alcanza un R² ≥ 0.85 en el conjunto de prueba cronológico (región Piura).",
+    "hipotesis_general_b": "El modelo seleccionado reduce el error de pronóstico (MAE) frente a los baselines de persistencia y de media móvil, con diferencias de pérdida pareadas por mes.",
+    "hipotesis_general_original": "El entorno agroeconómico influye significativamente en las técnicas de Machine Learning para la predicción eficaz de precios agrícolas en la región Piura, 2025.",
     "dimensiones": [
         {"codigo": "X1", "clave": "X1_Temporal", "nombre": "Dimensión Temporal", **_dim("temporal"),
          "variables": ["ANO", "MES_NUM", "MES_SEN", "MES_COS", "ESTACION"]},

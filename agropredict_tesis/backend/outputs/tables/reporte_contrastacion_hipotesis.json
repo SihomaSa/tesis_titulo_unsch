@@ -9,46 +9,50 @@
     "mape_final": 21.657654288198472
   },
   "hipotesis_general": {
-    "texto": "El entorno agroeconómico influye significativamente en las técnicas de Machine Learning para la predicción eficaz de precios agrícolas en la región Piura, 2025.",
+    "texto": "HG-a: el modelo de Machine Learning seleccionado alcanza un R² ≥ 0.85 en datos no vistos de la región Piura. HG-b: el modelo reduce el error de pronóstico frente a los baselines de persistencia y media móvil.",
     "estado_vs_umbral_OFICIAL": "RECHAZADA",
     "evidencia": "R² en prueba = 0.7775 (umbral oficial = 0.85); MAE persistencia = 0.4392 vs modelo = 0.4189"
   },
   "hipotesis_especificas": [
     {
       "codigo": "X1",
-      "texto": "La dimensión temporal del entorno agroeconómico influye significativamente en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
+      "texto": "Excluir la dimensión temporal del entorno agroeconómico empeora el pronóstico fuera de muestra del precio agrícola; es decir, la dimensión temporal contribuye predictivamente (sin implicar causalidad).",
       "R2_sin_dimension": 0.752416846991431,
       "diferencia_R2": 0.0015616860735614413,
       "p_valor": 1.0,
       "significativa_wilcoxon": "No",
-      "importancia_gini_dimension": 0.18352796954269956
+      "importancia_gini_dimension": 0.18352796954269956,
+      "estado_consistencia": "NO RESPALDADA"
     },
     {
       "codigo": "X2",
-      "texto": "La dimensión productiva del entorno agroeconómico influye significativamente en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
+      "texto": "Excluir la dimensión productiva del entorno agroeconómico empeora el pronóstico fuera de muestra del precio agrícola; es decir, la dimensión productiva contribuye predictivamente (sin implicar causalidad).",
       "R2_sin_dimension": 0.7597178799456383,
       "diferencia_R2": -0.005739346880645924,
       "p_valor": 1.0,
       "significativa_wilcoxon": "No",
-      "importancia_gini_dimension": 0.23203235719902343
+      "importancia_gini_dimension": 0.23203235719902343,
+      "estado_consistencia": "NO RESPALDADA"
     },
     {
       "codigo": "X3",
-      "texto": "La dimensión geográfica del entorno agroeconómico influye significativamente en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
+      "texto": "Excluir la dimensión geográfica del entorno agroeconómico empeora el pronóstico fuera de muestra del precio agrícola; es decir, la dimensión geográfica contribuye predictivamente (sin implicar causalidad).",
       "R2_sin_dimension": 0.6886785428022439,
       "diferencia_R2": 0.06529999026274846,
       "p_valor": 0.00390625,
       "significativa_wilcoxon": "Sí",
-      "importancia_gini_dimension": 0.1869317649451026
+      "importancia_gini_dimension": 0.1869317649451026,
+      "estado_consistencia": "PARCIALMENTE RESPALDADA"
     },
     {
       "codigo": "X4",
-      "texto": "La dimensión económica histórica del entorno agroeconómico influye significativamente en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
+      "texto": "Excluir la dimensión económica histórica del entorno agroeconómico empeora el pronóstico fuera de muestra del precio agrícola; es decir, la dimensión económica histórica contribuye predictivamente (sin implicar causalidad).",
       "R2_sin_dimension": 0.7291013091010446,
       "diferencia_R2": 0.02487722396394776,
       "p_valor": 0.041015625,
       "significativa_wilcoxon": "Sí",
-      "importancia_gini_dimension": 0.3975079083131744
+      "importancia_gini_dimension": 0.3975079083131744,
+      "estado_consistencia": "RESPALDADA"
     }
   ]
 }
