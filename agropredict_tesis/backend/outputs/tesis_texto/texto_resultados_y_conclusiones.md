@@ -73,6 +73,64 @@ De los registros iniciales solo se retiene una fracción pequeña. Se distinguen
 
 *Nota.* En ambos escenarios el modelo con hiperparámetros ajustados supera a la persistencia en MAE (4.6 %, 2.4 %), de modo que la conclusión cualitativa no depende de la regla de cosecha, aunque el margen cambia. Con hiperparámetros por defecto el modelo no supera a la persistencia (-7.2 %, -8.2 %): la ventaja depende del ajuste. Los hiperparámetros del escenario relajado se tomaron del ajuste con la muestra estricta. Elaboración propia.
 
+**Tabla 6a.** Distribución por provincia antes y después de la depuración
+
+| Categoría | % inicial | % retenido | Dif. (pp) | Tasa de retención (%) |
+|---|---|---|---|---|
+| SECHURA | 6.0 | 8.9 | 2.8 | 17.0 |
+| HUANCABAMBA | 20.8 | 22.8 | 1.9 | 12.6 |
+| PAITA | 6.0 | 7.2 | 1.2 | 13.9 |
+| AYABACA | 19.9 | 20.4 | 0.5 | 11.9 |
+| SULLANA | 9.7 | 8.6 | -1.1 | 10.3 |
+| PIURA | 18.7 | 17.4 | -1.3 | 10.7 |
+| MORROPON | 18.8 | 14.7 | -4.1 | 9.0 |
+
+**Tabla 6b.** Distribución por año antes y después de la depuración
+
+| Categoría | % inicial | % retenido | Dif. (pp) | Tasa de retención (%) |
+|---|---|---|---|---|
+| 2015.0000 | 4.2 | 6.6 | 2.3 | 17.9 |
+| 2016.0000 | 10.2 | 11.5 | 1.3 | 13.0 |
+| 2017.0000 | 10.1 | 10.4 | 0.3 | 11.9 |
+| 2018.0000 | 10.2 | 10.1 | -0.1 | 11.5 |
+| 2019.0000 | 10.6 | 9.6 | -1.0 | 10.5 |
+| 2020.0000 | 10.7 | 10.0 | -0.7 | 10.8 |
+| 2021.0000 | 11.0 | 10.3 | -0.7 | 10.8 |
+| 2022.0000 | 11.2 | 10.7 | -0.5 | 11.0 |
+| 2023.0000 | 10.9 | 11.6 | 0.6 | 12.2 |
+| 2024.0000 | 10.8 | 9.3 | -1.5 | 9.9 |
+
+**Tabla 6c.** Cultivos que más pierden y que más ganan peso tras la depuración (10 y 10)
+
+| Grupo | Categoría | % inicial | % retenido | Dif. (pp) | Tasa de retención (%) |
+|---|---|---|---|---|---|
+| Pierden peso | PACAE O GUABO | 2.5 | 0.6 | -1.9 | 2.8 |
+| Pierden peso | PALTO | 2.9 | 1.2 | -1.7 | 4.8 |
+| Pierden peso | NARANJO | 2.9 | 1.3 | -1.7 | 5.0 |
+| Pierden peso | PLATANOS Y BANANAS PARA COCCIÓN (M X paradisiaca) | 4.5 | 3.0 | -1.5 | 7.7 |
+| Pierden peso | LIMON SUTIL | 3.8 | 2.4 | -1.5 | 7.2 |
+| Pierden peso | CIRUELO (CIRUELA SPONDIAS) | 2.4 | 1.0 | -1.4 | 4.7 |
+| Pierden peso | MANGO | 3.3 | 2.0 | -1.4 | 6.8 |
+| Pierden peso | PASTO ELEFANTE | 3.2 | 1.8 | -1.4 | 6.6 |
+| Pierden peso | TUNA | 1.2 | 0.0 | -1.2 | 0.0 |
+| Pierden peso | OTROS PASTOS | 2.0 | 1.0 | -1.1 | 5.5 |
+| Ganan peso | MAIZ AMARILLO DURO | 4.0 | 11.9 | 7.9 | 34.5 |
+| Ganan peso | ARROZ | 3.2 | 8.0 | 4.8 | 28.6 |
+| Ganan peso | PAPA (agrupa mejoradas y nativas) | 1.4 | 4.7 | 3.3 | 38.5 |
+| Ganan peso | YUCA | 3.2 | 6.4 | 3.2 | 23.1 |
+| Ganan peso | FRIJOL CAUPI CHICLAYO CASTILLA CHILENO GRANO SECO | 1.6 | 3.8 | 2.1 | 26.8 |
+| Ganan peso | SANDIA | 1.4 | 3.1 | 1.7 | 26.0 |
+| Ganan peso | ARVEJA GRANO SECO | 1.2 | 2.6 | 1.4 | 25.5 |
+| Ganan peso | MAIZ AMILACEO | 1.6 | 3.0 | 1.4 | 21.9 |
+| Ganan peso | TRIGO BLANDO | 1.1 | 2.3 | 1.2 | 24.0 |
+| Ganan peso | CEBOLLA | 1.0 | 2.1 | 1.1 | 24.3 |
+
+*Nota.* % inicial = participación entre todos los registros de Piura; % retenido = participación en la muestra de modelado; Dif. (pp) = retenido − inicial; tasa de retención = registros retenidos / registros iniciales de la categoría. Elaboración propia.
+
+Para examinar cómo la depuración modificó la composición de los datos, se compararon las distribuciones de provincias, años y cultivos antes y después de la exclusión (Tablas 6a a 6c). La participación de las provincias cambió entre -4.1 y 2.8 puntos porcentuales, y la de los años entre -1.5 y 2.3. En cultivos, la depuración sobrerrepresentó a maiz amarillo duro, arroz y papa (agrupa mejoradas y nativas) y subrepresentó a pacae o guabo, palto y naranjo; la asociación entre la composición y la condición de retenido resultó significativa en cultivo (χ² = 11924.7; p < 0.001; V de Cramér = 0.31), provincia (χ² = 469.4; p < 0.001; V = 0.06) y año (χ² = 308.9; p < 0.001; V = 0.05). Al aislar solo la regla de cosecha, la dependencia es fuerte con el cultivo (V = 0.79), moderada con el año (V = 0.25) y débil con la provincia (V = 0.14). En consecuencia, la muestra de modelado no reproduce la composición del registro inicial: los resultados son válidos para los registros con cosecha efectiva y precio informado, y no deben generalizarse a todos los cultivos ni a todos los períodos de la región.
+
+[Sección 5 — frase para la respuesta a la Obs. 10] Además, se agregaron las Tablas 6a–6c, que comparan la distribución de provincias, años y cultivos antes y después de la depuración (provincias: -4.1 a 2.8 pp; años: -1.5 a 2.3 pp).
+
 ### 4.1.3. Fase 3 — Preparación de los datos
 
 Se corrigió el formato de la variable MES del dataset oficial (AAAAMM) para extraer el mes calendario, y se construyeron las 17 variables de entrada distribuidas en las cuatro dimensiones (Tabla C). Todas las variables de la dimensión económica histórica se calculan exclusivamente con precios de períodos anteriores del mismo cultivo, provincia y distrito, de modo que ninguna variable contiene información del precio que se desea predecir (control de fuga de datos). Los valores faltantes (el primer registro de cada serie carece de historial) se imputan con la mediana calculada únicamente con datos de entrenamiento, dentro del pipeline.
@@ -215,8 +273,8 @@ Isolation Forest con contaminación de 5 % identificó 720 registros anómalos (
 | Persistencia | Solo con precio previo real | 0.4223 | 0.4132 | 2.2 | -0.0002 | 0.0236 | 0.097 |
 | Media móvil 3 | Todos los registros | 0.4565 | 0.4189 | 8.2 | 0.0140 | 0.0560 | 0.006 |
 | Media móvil 3 | Solo con precio previo real | 0.4399 | 0.4132 | 6.1 | 0.0094 | 0.0407 | 0.009 |
-| LightGBM | Todos los registros | 0.4844 | 0.4189 | 13.5 | 0.0275 | 0.0826 | 0.004 |
-| LightGBM | Solo con precio previo real | 0.4790 | 0.4132 | 13.7 | 0.0270 | 0.0830 | 0.005 |
+| LightGBM directo | Todos los registros | 0.4844 | 0.4189 | 13.5 | 0.0275 | 0.0826 | 0.004 |
+| LightGBM directo | Solo con precio previo real | 0.4790 | 0.4132 | 13.7 | 0.0270 | 0.0830 | 0.005 |
 | Random Forest | Todos los registros | 0.4583 | 0.4189 | 8.6 | 0.0088 | 0.0610 | 0.033 |
 | Random Forest | Solo con precio previo real | 0.4539 | 0.4132 | 9.0 | 0.0103 | 0.0615 | 0.024 |
 | Regresión Lineal | Todos los registros | 0.5308 | 0.4189 | 21.1 | 0.0591 | 0.1599 | 0.005 |
@@ -224,9 +282,9 @@ Isolation Forest con contaminación de 5 % identificó 720 registros anómalos (
 | XGBoost | Todos los registros | 0.4679 | 0.4189 | 10.5 | 0.0163 | 0.0599 | 0.005 |
 | XGBoost | Solo con precio previo real | 0.4603 | 0.4132 | 10.2 | 0.0155 | 0.0587 | 0.006 |
 
-*Nota.* IC95 de la diferencia media mensual de pérdida absoluta (referencia − modelo; > 0 favorece al modelo), por bootstrap de bloques móviles. Contraste unilateral con error estándar HAC (Newey–West), corrección de Holm por las comparaciones de cada muestra. Con pocos meses de prueba el poder es limitado. Elaboración propia.
+*Nota.* IC95 de la diferencia media mensual de pérdida absoluta (referencia − modelo; > 0 favorece al modelo), por bootstrap de bloques móviles. Contraste unilateral con error estándar HAC (Newey–West), corrección de Holm por las comparaciones de cada muestra. Con pocos meses de prueba el poder es limitado. «LightGBM directo» es el LightGBM sin ancla de persistencia; el modelo evaluado es LightGBM sobre persistencia. Elaboración propia.
 
-Frente a la persistencia, el LightGBM sobre persistencia reduce el MAE en 4.6 % (IC95 de la diferencia mensual [0.006; 0.041]; p Holm = 0.033). Sin embargo, al excluir los registros sin precio previo —para los cuales la «persistencia» es solo un valor de respaldo (mediana) y no un pronóstico comparable— la reducción es de 2.2 % y deja de ser estadísticamente concluyente (IC95 [-0.000; 0.024]; p = 0.097). Con pérdida cuadrática (que penaliza más los errores grandes) la diferencia frente a la persistencia sí es significativa en 9 de 9 configuraciones de rezagos y bloques, por lo que la conclusión depende de la métrica elegida. Frente a Random Forest, XGBoost, LightGBM, la ventaja se observa con pérdida absoluta pero no con pérdida cuadrática; el modelo se seleccionó por MAE y no es superior en términos de errores grandes.
+Frente a la persistencia, el LightGBM sobre persistencia reduce el MAE en 4.6 % (IC95 de la diferencia mensual [0.006; 0.041]; p Holm = 0.033). Sin embargo, al excluir los registros sin precio previo —para los cuales la «persistencia» es solo un valor de respaldo (mediana) y no un pronóstico comparable— la reducción es de 2.2 % y deja de ser estadísticamente concluyente (IC95 [-0.000; 0.024]; p Holm = 0.097). Con pérdida cuadrática (que penaliza más los errores grandes) el IC95 de la diferencia frente a la persistencia excluye 0 en 9 de 9 configuraciones de rezagos y bloques (con pérdida absoluta, en 3 de 9), por lo que la conclusión depende de la métrica elegida. Frente a Random Forest, XGBoost y LightGBM directo, la ventaja se observa con pérdida absoluta pero no con pérdida cuadrática; el modelo se seleccionó por MAE y no es superior en términos de errores grandes.
 
 ### 4.2.6. Error según la distancia al último precio observado
 
@@ -320,7 +378,7 @@ Criterio de reporte: una hipótesis se declara *respaldada* si resulta significa
 
 **HG-a (eficacia): NO RESPALDADA.** R² = 0.7775 (IC95 [0.6908; 0.8145]) frente al umbral de 0.85. No alcanzar el umbral no invalida el estudio: indica que el modelo no cumple el criterio de eficacia fijado para este conjunto de datos.
 
-**HG-b (superación de baselines): PARCIALMENTE RESPALDADA.** Frente a la media móvil la reducción es de 8.2 % (p Holm = 0.006). Frente a la persistencia es de 4.6 % (p Holm = 0.033) con todos los registros, pero no es concluyente con registros que tienen precio previo real (p = 0.097).
+**HG-b (superación de baselines): PARCIALMENTE RESPALDADA.** Frente a la media móvil la reducción es de 8.2 % (p Holm = 0.006). Frente a la persistencia es de 4.6 % (p Holm = 0.033) con todos los registros, pero no es concluyente con registros que tienen precio previo real (p Holm = 0.097).
 
 **Tabla S.** Consistencia de los contrastes por dimensión
 
@@ -380,7 +438,7 @@ La importancia por ganancia, SHAP y permutación mide cuánto usa el modelo cada
 - No se incorporaron variables climáticas (SENAMHI, ONI) ni de mercado externas.
 - La dimensión geográfica usa codificación ordinal de provincia, distrito y cultivo, sin coordenadas ni embeddings; su efecto es inestable entre validación y prueba.
 - Los precios solo existen cuando hubo cosecha; las series son irregulares y la distancia al último precio varía (Tabla M).
-- La muestra de modelado es una fracción pequeña del registro inicial y no es representativa de todos los cultivos (Tablas Q y R); los resultados no se generalizan a toda la región.
+- La muestra de modelado es una fracción pequeña del registro inicial y no es representativa de todos los cultivos (Tablas Q, R y 6a–6c); los resultados no se generalizan a toda la región.
 - Pocos meses de prueba limitan la potencia de los contrastes; los folds de validación temporal se solapan y no son independientes.
 - El desempeño es menor en cultivos de alto valor y baja frecuencia (Tabla H).
 - La validación es retrospectiva (pronóstico de un paso con rezagos observados); no se evaluó deriva conceptual ni beneficio económico.
@@ -389,7 +447,7 @@ La importancia por ganancia, SHAP y permutación mide cuánto usa el modelo cada
 
 1. **Objetivo general.** Se desarrolló y evaluó, con una metodología de nueve fases, un modelo de predicción del precio en chacra para Piura. El modelo seleccionado en validación, LightGBM sobre persistencia, obtuvo en prueba (n = 2 148) R² = 0.7775 (IC95 [0.6908; 0.8145]), MAE = 0.4189 S/ por kg y MAPE = 21.7 %; el criterio R² ≥ 0.85 no se cumple.
 
-2. **Comparación con referencias.** El modelo reduce el MAE frente a la persistencia en 4.6 % (p Holm = 0.033), aunque la reducción es de 2.2 % y no concluyente (p = 0.097) al considerar solo registros con precio previo real; supera a la media móvil y a la regresión lineal en MAE. En R², XGBoost (0.7992) supera al modelo seleccionado. Frente a Random Forest, XGBoost, LightGBM la ventaja se observa con pérdida absoluta (MAE) pero no con pérdida cuadrática. La mejora técnica es modesta y depende de la métrica y de la distancia al último precio.
+2. **Comparación con referencias.** El modelo reduce el MAE frente a la persistencia en 4.6 % (p Holm = 0.033), aunque la reducción es de 2.2 % y no concluyente (p Holm = 0.097) al considerar solo registros con precio previo real; supera a la media móvil y a la regresión lineal en MAE. En R², XGBoost (0.7992) supera al modelo seleccionado. Frente a Random Forest, XGBoost y LightGBM directo la ventaja se observa con pérdida absoluta (MAE) pero no con pérdida cuadrática. La mejora técnica es modesta y depende de la métrica y de la distancia al último precio.
 
 3. **Horizonte.** El modelo predice la siguiente observación disponible de cada serie; su ventaja sobre la persistencia se concentra en brechas largas (Precio previo hace 1 mes: -8.6 %; Hace 2–3 meses: -3.8 %; Hace 4–12 meses: +8.0 %; Hace más de 12 meses: +2.1 %).
 

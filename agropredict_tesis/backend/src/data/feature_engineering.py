@@ -1,15 +1,10 @@
 """
-feature_engineering.py — FASE 3 (preparación): ingeniería de características
-por dimensión (X1–X4) SIN fuga de información.
+feature_engineering.py — FASE 3: ingeniería de características por dimensión (X1–X4) sin fuga.
 
-Regla de oro: toda variable de X4 usa únicamente precios de períodos
-ESTRICTAMENTE ANTERIORES del mismo cultivo-provincia-distrito. La versión
-anterior incluía VARIACION_PRECIO = (precio_t - precio_{t-1}) / precio_{t-1},
-que contiene la variable objetivo (precio_t): con ella el modelo "ve" la
-respuesta. Aquí se reemplaza por la variación PREVIA (t-1 vs t-2).
-
-Los valores faltantes (primer registro de cada serie) NO se imputan aquí:
-los trata el Pipeline de scikit-learn (fit solo con entrenamiento).
+  horizonte=None : comportamiento anterior ("siguiente observación disponible").
+  horizonte=h    : v2. El objetivo es el precio del mes T y TODAS las variables dependientes de la
+                   serie (X2, X4) se calculan con información de meses <= T-h (origen del pronóstico).
+Los faltantes los trata el Pipeline de scikit-learn (fit solo con entrenamiento).
 """
 import json
 import os
@@ -17,38 +12,18 @@ import os
 import numpy as np
 import pandas as pd
 
-from src.config import TARGET, MATRIZ_CONSISTENCIA, OUT_TAB
+from src.config import (TARGET, MATRIZ_CONSISTENCIA, OUT_TAB, X2_MODO, X2_REZAGO_EXTRA_MESES, USAR_ANO_V2)
 
 SERIE = ["CULTIVO", "PROVINCIA", "DISTRITO"]
+X2C = ["SIEMBRA", "COSECHA", "PRODUCCION", "RENDIMIENTO_TON_HA"]
 
 
 def _estacion(m):
-    # Hemisferio sur (Perú): verano dic-feb, otoño mar-may, invierno jun-ago, primavera sep-nov
     return 0 if m in (12, 1, 2) else 1 if m in (3, 4, 5) else 2 if m in (6, 7, 8) else 3
 
 
-def build_features(df: pd.DataFrame, guardar_catalogo: bool = True):
-    df = df.copy()
-
-    # ---------------- X1 Temporal ----------------
-    df["MES_SEN"] = np.sin(2 * np.pi * df["MES_NUM"] / 12)
-    df["MES_COS"] = np.cos(2 * np.pi * df["MES_NUM"] / 12)
-    df["ESTACION"] = df["MES_NUM"].map(_estacion)
-
-    # ---------------- X2 Productiva ----------------
-    df["RENDIMIENTO_TON_HA"] = np.where(df["COSECHA"] > 0, df["PRODUCCION"] / df["COSECHA"], 0.0)
-
-    # ---------------- X3 Geográfica (códigos ordinales estables) ----------------
-    catalogo = {}
-    for col, base in (("PROVINCIA", "PROVINCIA"), ("DISTRITO", "DISTRITO"), ("CULTIVO", "COD_CULTIVO")):
-        llaves = sorted(df[base].astype(str).unique())
-        mapa = {k: i for i, k in enumerate(llaves)}
-        df[col + "_enc"] = df[base].astype(str).map(mapa).astype(int)
-        catalogo[base] = mapa
-    uni = df.drop_duplicates("COD_CULTIVO")
-    catalogo["NOMBRE_CULTIVO"] = dict(zip(uni["COD_CULTIVO"].astype(str), uni["CULTIVO"]))
-
-    # ---------------- X4 Económica histórica (solo pasado) ----------------
+# ---------------------------------------------------------------- X4 / X2: versión anterior
+def _x4_x2_anterior(df):
     ser = (df.groupby(SERIE + ["MES_IDX"], as_index=False)[TARGET].mean()
              .sort_values(SERIE + ["MES_IDX"]))
     g = ser.groupby(SERIE)
@@ -62,29 +37,108 @@ def build_features(df: pd.DataFrame, guardar_catalogo: bool = True):
             "MESES_DESDE_PRECIO_PREVIO", "TIENE_HISTORIAL"]
     df = df.merge(ser[SERIE + ["MES_IDX"] + cols], on=SERIE + ["MES_IDX"], how="left")
 
-    # ---- Obs. 8: X2 REZAGADA (observación previa de la serie). NO entra a `features`:
-    # solo se usa en analysis/robustez.py para comprobar que X2 del mismo mes no genera fuga.
-    x2c = ["SIEMBRA", "COSECHA", "PRODUCCION", "RENDIMIENTO_TON_HA"]
-    x2 = (df.groupby(SERIE + ["MES_IDX"], as_index=False)[x2c].mean().sort_values(SERIE + ["MES_IDX"]))
+    x2 = (df.groupby(SERIE + ["MES_IDX"], as_index=False)[X2C].mean().sort_values(SERIE + ["MES_IDX"]))
     gx = x2.groupby(SERIE)
-    for c in x2c:
+    for c in X2C:
         x2[c + "_PREV"] = gx[c].shift(1)
-    df = df.merge(x2[SERIE + ["MES_IDX"] + [c + "_PREV" for c in x2c]], on=SERIE + ["MES_IDX"], how="left")
+    df = df.merge(x2[SERIE + ["MES_IDX"] + [c + "_PREV" for c in X2C]], on=SERIE + ["MES_IDX"], how="left")
+    return df
+
+
+# ---------------------------------------------------------------- X4 / X2: horizonte fijo (v2)
+def _x4_x2_horizonte(df, h):
+    base = (df.groupby(SERIE + ["MES_IDX"], as_index=False)
+              .agg(PREC=(TARGET, "mean"), **{c: (c, "mean") for c in X2C})
+              .sort_values(SERIE + ["MES_IDX"]).reset_index(drop=True))
+    base["MES_IDX"] = base["MES_IDX"].astype("int64")
+    g = base.groupby(SERIE)["PREC"]
+    base["MM3"] = g.transform(lambda s: s.rolling(3, min_periods=1).mean())   # incluye el último precio
+    prev = g.shift(1)
+    base["VAR"] = (base["PREC"] - prev) / prev.replace(0, np.nan) * 100
+
+    izq = df[SERIE + ["MES_IDX"]].drop_duplicates().copy()
+    izq["MES_IDX"] = izq["MES_IDX"].astype("int64")
+
+    # --- X4: último precio observado con mes <= origen (= mes objetivo - h)
+    izq["ORIGEN"] = izq["MES_IDX"] - h
+    der = base[SERIE + ["MES_IDX", "PREC", "MM3", "VAR"]].rename(columns={"MES_IDX": "MES_ULT_PRECIO"})
+    m = pd.merge_asof(izq.sort_values("ORIGEN"), der.sort_values("MES_ULT_PRECIO"),
+                      left_on="ORIGEN", right_on="MES_ULT_PRECIO", by=SERIE, direction="backward")
+    m["PRECIO_LAG1"] = m["PREC"]
+    m["MEDIA_MOVIL_3"] = m["MM3"]
+    m["VARIACION_PRECIO_PREVIA"] = m["VAR"]
+    m["MESES_DESDE_PRECIO_PREVIO"] = m["ORIGEN"] - m["MES_ULT_PRECIO"]      # edad del precio EN EL ORIGEN
+    m["TIENE_HISTORIAL"] = m["PREC"].notna().astype(int)
+    cols = ["PRECIO_LAG1", "VARIACION_PRECIO_PREVIA", "MEDIA_MOVIL_3", "MESES_DESDE_PRECIO_PREVIO",
+            "TIENE_HISTORIAL", "MES_ULT_PRECIO"]
+    df = df.merge(m[SERIE + ["MES_IDX"] + cols], on=SERIE + ["MES_IDX"], how="left")
+
+    # --- X2: se conserva la versión contemporánea (*_ACT) solo como cota superior
+    for c in X2C:
+        df[c + "_ACT"] = df[c]
+    if X2_MODO == "rezagada":
+        izq2 = izq.copy()
+        izq2["ORIGEN_X2"] = izq2["MES_IDX"] - h - X2_REZAGO_EXTRA_MESES
+        der2 = base[SERIE + ["MES_IDX"] + X2C].rename(
+            columns={"MES_IDX": "MES_ULT_X2", **{c: c + "_LAG" for c in X2C}})
+        m2 = pd.merge_asof(izq2.sort_values("ORIGEN_X2"), der2.sort_values("MES_ULT_X2"),
+                           left_on="ORIGEN_X2", right_on="MES_ULT_X2", by=SERIE, direction="backward")
+        df = df.merge(m2[SERIE + ["MES_IDX", "MES_ULT_X2"] + [c + "_LAG" for c in X2C]],
+                      on=SERIE + ["MES_IDX"], how="left")
+        for c in X2C:
+            df[c] = df[c + "_LAG"]        # las columnas X2 pasan a contener solo información del origen
+    df["HORIZONTE"] = h
+    return df
+
+
+def build_features(df: pd.DataFrame, guardar_catalogo: bool = True, horizonte=None):
+    df = df.copy()
+    df["MES_IDX"] = df["MES_IDX"].astype("int64")
+
+    # ---------------- X1 Temporal (mes objetivo: se conoce de antemano) ----------------
+    df["MES_SEN"] = np.sin(2 * np.pi * df["MES_NUM"] / 12)
+    df["MES_COS"] = np.cos(2 * np.pi * df["MES_NUM"] / 12)
+    df["ESTACION"] = df["MES_NUM"].map(_estacion)
+
+    # ---------------- X2 Productiva (contemporánea; en v2 se reemplaza por la del origen) ----------------
+    df["RENDIMIENTO_TON_HA"] = np.where(df["COSECHA"] > 0, df["PRODUCCION"] / df["COSECHA"], 0.0)
+
+    # ---------------- X3 Geográfica (códigos ordinales estables) ----------------
+    catalogo = {}
+    for col, base in (("PROVINCIA", "PROVINCIA"), ("DISTRITO", "DISTRITO"), ("CULTIVO", "COD_CULTIVO")):
+        llaves = sorted(df[base].astype(str).unique())
+        mapa = {k: i for i, k in enumerate(llaves)}
+        df[col + "_enc"] = df[base].astype(str).map(mapa).astype(int)
+        catalogo[base] = mapa
+    uni = df.drop_duplicates("COD_CULTIVO")
+    catalogo["NOMBRE_CULTIVO"] = dict(zip(uni["COD_CULTIVO"].astype(str), uni["CULTIVO"]))
+
+    # ---------------- X4 (+ X2 rezagada en v2) ----------------
+    df = _x4_x2_anterior(df) if horizonte is None else _x4_x2_horizonte(df, int(horizonte))
     df = df.sort_values(["PERIODO", "CULTIVO", "PROVINCIA", "DISTRITO"]).reset_index(drop=True)
 
     dimensiones = {d["clave"]: list(d["variables"]) for d in MATRIZ_CONSISTENCIA["dimensiones"]}
+    if horizonte is not None and not USAR_ANO_V2:
+        dimensiones["X1_Temporal"] = [v for v in dimensiones["X1_Temporal"] if v != "ANO"]
     features = [f for v in dimensiones.values() for f in v]
 
-    # Auditoría anti-fuga: ninguna variable debe reconstruir el objetivo
+    # Auditoría anti-fuga
     X = df[features].astype(float)
     corr_max = X.corrwith(df[TARGET]).abs().max()
-    print(f"[Fase 3] {len(features)} variables (X1={len(dimensiones['X1_Temporal'])}, "
-          f"X2={len(dimensiones['X2_Productiva'])}, X3={len(dimensiones['X3_Geografica'])}, "
-          f"X4={len(dimensiones['X4_Economica_Historica'])}); "
-          f"sin historial previo: {(df['TIENE_HISTORIAL'] == 0).mean() * 100:.1f}% "
+    if horizonte is not None:
+        h = int(horizonte)
+        ok = df["MES_ULT_PRECIO"].notna()
+        assert ((df.loc[ok, "MES_IDX"] - df.loc[ok, "MES_ULT_PRECIO"]) >= h).all(), \
+            "FUGA: hay un precio previo posterior al origen del pronóstico"
+        if X2_MODO == "rezagada":
+            ok2 = df["MES_ULT_X2"].notna()
+            assert ((df.loc[ok2, "MES_IDX"] - df.loc[ok2, "MES_ULT_X2"]) >= h + X2_REZAGO_EXTRA_MESES).all(), \
+                "FUGA: X2 usa información posterior al origen"
+        print(f"[Fase 3] Horizonte h={h} mes(es): X2 {X2_MODO}; prueba anti-fuga superada.")
+    print(f"[Fase 3] {len(features)} variables; sin historial previo: {(df['TIENE_HISTORIAL'] == 0).mean() * 100:.1f}% "
           f"| |corr| máx. con el objetivo = {corr_max:.3f}")
 
-    if guardar_catalogo:   # False en los análisis de sensibilidad: NO debe sobrescribir el catálogo que usa la API
+    if guardar_catalogo:
         with open(os.path.join(OUT_TAB, "catalogo_codificacion.json"), "w", encoding="utf-8") as f:
             json.dump(catalogo, f, ensure_ascii=False, indent=1)
     return df, features, dimensiones, catalogo

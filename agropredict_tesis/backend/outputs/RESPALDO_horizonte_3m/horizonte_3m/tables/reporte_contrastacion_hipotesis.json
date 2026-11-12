@@ -1,0 +1,58 @@
+{
+  "n_registros_validos": 14393,
+  "modelo_seleccionado": "LightGBM sobre persistencia",
+  "n_splits_ablation": 10,
+  "modelo_final": {
+    "r2_final": 0.7348076156558077,
+    "mae_final": 0.500737816464215,
+    "rmse_final": 1.0223666767806223,
+    "mape_final": 23.95163328829252
+  },
+  "hipotesis_general": {
+    "texto": "HG-a: el modelo de Machine Learning seleccionado alcanza un R² ≥ 0.85 en datos no vistos de la región Piura. HG-b: el modelo reduce el error de pronóstico frente a los baselines de persistencia y media móvil.",
+    "estado_vs_umbral_OFICIAL": "RECHAZADA",
+    "evidencia": "R² en prueba = 0.7348 (umbral oficial = 0.85); MAE persistencia = 0.5276 vs modelo = 0.5007"
+  },
+  "hipotesis_especificas": [
+    {
+      "codigo": "X1",
+      "texto": "Excluir la dimensión temporal del entorno agroeconómico empeora el pronóstico fuera de muestra del precio agrícola; es decir, la dimensión temporal contribuye predictivamente (sin implicar causalidad).",
+      "R2_sin_dimension": 0.7241970951133962,
+      "diferencia_R2": 0.008310581894638291,
+      "p_valor": 1.0,
+      "significativa_wilcoxon": "No",
+      "importancia_gini_dimension": 0.1087875529099175,
+      "estado_consistencia": "NO RESPALDADA"
+    },
+    {
+      "codigo": "X2",
+      "texto": "Excluir la dimensión productiva del entorno agroeconómico empeora el pronóstico fuera de muestra del precio agrícola; es decir, la dimensión productiva contribuye predictivamente (sin implicar causalidad).",
+      "R2_sin_dimension": 0.7345187586410987,
+      "diferencia_R2": -0.0020110816330641823,
+      "p_valor": 1.0,
+      "significativa_wilcoxon": "No",
+      "importancia_gini_dimension": 0.1936723754907902,
+      "estado_consistencia": "NO RESPALDADA"
+    },
+    {
+      "codigo": "X3",
+      "texto": "Excluir la dimensión geográfica del entorno agroeconómico empeora el pronóstico fuera de muestra del precio agrícola; es decir, la dimensión geográfica contribuye predictivamente (sin implicar causalidad).",
+      "R2_sin_dimension": 0.6706450280691689,
+      "diferencia_R2": 0.061862648938865616,
+      "p_valor": 0.00390625,
+      "significativa_wilcoxon": "Sí",
+      "importancia_gini_dimension": 0.22874158104386438,
+      "estado_consistencia": "PARCIALMENTE RESPALDADA"
+    },
+    {
+      "codigo": "X4",
+      "texto": "Excluir la dimensión económica histórica del entorno agroeconómico empeora el pronóstico fuera de muestra del precio agrícola; es decir, la dimensión económica histórica contribuye predictivamente (sin implicar causalidad).",
+      "R2_sin_dimension": 0.7127295039779227,
+      "diferencia_R2": 0.019778173030111867,
+      "p_valor": 0.0205078125,
+      "significativa_wilcoxon": "Sí",
+      "importancia_gini_dimension": 0.46879849055542794,
+      "estado_consistencia": "RESPALDADA"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+Etapa,Registros,Eliminados
+Registros iniciales del dataset,124514,0
+En provincias de la región Piura,124514,0
+Con PRECIO_CHACRA informado (sin imputar el objetivo),124514,0
+Con PRECIO_CHACRA > 0,38644,85870
+"Con SIEMBRA, COSECHA y PRODUCCION informadas",35293,3351
+Sin inconsistencias (COSECHA=0 y PRODUCCION>0),14393,20900
+Sin duplicados exactos (muestra final de modelado),14393,0

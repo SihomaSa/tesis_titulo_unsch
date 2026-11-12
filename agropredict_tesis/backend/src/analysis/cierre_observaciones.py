@@ -11,6 +11,8 @@ cierre_observaciones.py — Tres análisis que cierran puntos abiertos del infor
 
 Ubicación: backend/src/analysis/cierre_observaciones.py
 No modifica el modelo final ni la selección. Solo escribe tablas en outputs/tables/.
+
+v2: con horizonte, las columnas de X2 rezagada son *_LAG (no *_PREV).
 """
 import os
 
@@ -21,7 +23,8 @@ from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.model_selection import TimeSeriesSplit
 
 from src.analysis import significancia as sg
-from src.analysis.robustez import X2_PREV, _params, params_residual
+# ← CORREGIDO: importar _cols_x2_rezagada además de lo anterior
+from src.analysis.robustez import _cols_x2_rezagada, _params, params_residual
 from src.config import N_SPLITS_ABLATION, OUT_TAB
 from src.models.pipelines import build_pipeline
 
@@ -68,19 +71,23 @@ def robustez_con_historial(periodo, y, pred_modelo, refs: dict, nombre_modelo, t
 # ---------------------------------------------------------------------------
 # B) X2 rezagada / sin X2 sobre el MODELO FINAL (residual)
 # ---------------------------------------------------------------------------
-def variante_x2_modelo_final(df, y, idx_dev, idx_te, features, dimensiones, p_res, rapido=False):
+# ← CORREGIDO: firma con horizonte y uso de _cols_x2_rezagada
+def variante_x2_modelo_final(df, y, idx_dev, idx_te, features, dimensiones, p_res, rapido=False, horizonte=None):
     """Mismo diseño que robustez.variante_x2_rezagada, pero con LightGBM sobre persistencia y sus
-    hiperparámetros ajustados (p_res = res['mejores_params']['lgbm_res'])."""
-    faltan = [c for c in X2_PREV if c not in df.columns]
+    hiperparámetros ajustados (p_res = res['mejores_params']['lgbm_res']).
+    v2: con horizonte, las columnas son *_LAG (no *_PREV)."""
+    cols_x2 = _cols_x2_rezagada(horizonte)
+    faltan = [c for c in cols_x2 if c not in df.columns]
     if faltan:
-        print(f"[Obs.8] Faltan columnas {faltan}.")
+        print(f"[Obs.8] Faltan columnas {faltan} "
+              f"({'v2 usa *_LAG' if horizonte is not None else 'v1 usa *_PREV'}).")
         return None
     prm = params_residual(p_res, rapido)
     yt = y.iloc[idx_te].to_numpy()
     per = df["PERIODO"].iloc[idx_te].to_numpy()
     x2 = dimensiones["X2_Productiva"]
     esc = {"Original (X2 del mismo mes)": features,
-           "X2 rezagada (observación previa)": [f for f in features if f not in x2] + X2_PREV,
+           "X2 rezagada (observación previa)": [f for f in features if f not in x2] + cols_x2,
            "Sin X2": [f for f in features if f not in x2]}
 
     def ajusta(feats):

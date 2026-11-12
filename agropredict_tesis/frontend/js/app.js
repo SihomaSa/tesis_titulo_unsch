@@ -1,6 +1,6 @@
 // app.js — lógica del dashboard AgroPredict.
-// Consume la API FastAPI (src/api/main.py) y pinta la Matriz de
-// Consistencia + resultados del capítulo 4 + formulario de predicción.
+// Consume la API FastAPI y pinta la Matriz de Consistencia, resultados del
+// Capítulo 4 (con métricas de ΔMAE y ΔR²) y el formulario de predicción.
 const API_BASE_URL = String(window.API_BASE_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
 // Umbrales de R² (espejo de src/config.py)
@@ -12,7 +12,7 @@ const DIM_COLORS = { X1: "#1A5276", X2: "#1B6B4A", X3: "#C4960A", X4: "#C0392B" 
 const DIM_NOMBRES = {
   X1_Temporal: "X1 Temporal",
   X2_Productiva: "X2 Productiva",
-  X3_Geografica: "X3 Geográfica",
+  X3_Geografica: "X3 Espacial y de producto",
   X4_Economica_Historica: "X4 Económica histórica",
 };
 
@@ -26,8 +26,9 @@ const COLUMN_LABELS = {
   Dimension: "Dimensión",
   R2_sin_dim: "R² sin la dimensión",
   R2_completo: "R² modelo completo",
-  Diferencia_R2: "ΔR²",
-  p_valor: "p-valor (Wilcoxon)",
+  Diferencia_R2: "ΔR² (complementario)",
+  Diferencia_MAE: "ΔMAE (principal)",
+  p_mae_holm: "p-valor (Holm)",
   Significativa_estadistica: "Significativa",
 };
 
@@ -104,11 +105,13 @@ function buscarValorPorPatron(obj, patron) {
   return clave !== undefined ? obj[clave] : undefined;
 }
 
+// ACTUALIZADO: maneja los 3 estados de la tesis (Respaldada, Parcial, No respaldada)
 function normalizarEstado(v) {
   if (v === undefined || v === null || v === "") return null;
   const s = String(v).trim().toUpperCase();
-  if (s.startsWith("ACEPT")) return "ACEPTADA";
-  if (s.startsWith("RECHAZ")) return "RECHAZADA";
+  if (s.startsWith("ACEPT") || s.startsWith("RESPALD") && !s.includes("PARCIAL") && !s.includes("NO")) return "RESPALDADA";
+  if (s.startsWith("PARCIAL")) return "PARCIALMENTE RESPALDADA";
+  if (s.startsWith("RECHAZ") || s.startsWith("NO RESPALD")) return "NO RESPALDADA";
   return null;
 }
 
@@ -177,7 +180,7 @@ function setupFigures() {
       aviso.className = "fig-missing";
       aviso.innerHTML =
         `No se encontró la imagen <code>${esc(img.getAttribute("src"))}</code>.<br />` +
-        "Descárgala desde MLflow (Artifacts) y guárdala en esa ruta.";
+        "Descárgala desde la carpeta de outputs y guárdala en esa ruta.";
       fig.insertBefore(aviso, img);
     };
     img.addEventListener("error", marcarFaltante);
@@ -374,7 +377,8 @@ async function loadAblation() {
           const si = esSi(r[col]);
           return `<span class="badge ${si ? "yes" : "no"}">${si ? "Sí" : "No"}</span>`;
         }
-        if (col === "Diferencia_R2") {
+        // Rellena las diferencias positivas/negativas
+        if (col === "Diferencia_R2" || col === "Diferencia_MAE") {
           const v = Number(r[col]);
           const cls = !isNum(v) || Math.abs(v) < 0.00005 ? "" : v < 0 ? "neg" : "pos";
           return `<span class="${cls}">${fmtSigned(v)}</span>`;
@@ -417,9 +421,11 @@ function extraerR2(modeloFinal, evidencia) {
   return m ? parseFloat(m[1].replace(",", ".")) : null;
 }
 
+// ACTUALIZADO: chips para los 3 estados
 function chipEstado(estado) {
-  if (estado === "ACEPTADA") return '<span class="chip ok">Aceptada</span>';
-  if (estado === "RECHAZADA") return '<span class="chip bad">Rechazada</span>';
+  if (estado === "RESPALDADA" || estado === "ACEPTADA") return '<span class="chip ok">Respaldada</span>';
+  if (estado === "PARCIALMENTE RESPALDADA") return '<span class="chip warn">Parcialmente respaldada</span>';
+  if (estado === "NO RESPALDADA" || estado === "RECHAZADA") return '<span class="chip bad">No respaldada</span>';
   return '<span class="chip na">Sin dato</span>';
 }
 
@@ -428,7 +434,7 @@ function renderHipotesisGeneral(r) {
   const mf = r.modelo_final || {};
   const r2 = extraerR2(mf, hg.evidencia);
 
-  const calc = (u) => (isNum(r2) ? (r2 >= u ? "ACEPTADA" : "RECHAZADA") : null);
+  const calc = (u) => (isNum(r2) ? (r2 >= u ? "RESPALDADA" : "NO RESPALDADA") : null);
   const estadoOficial =
     normalizarEstado(buscarValorPorPatron(hg, /oficial/i)) ??
     normalizarEstado(buscarValorPorPatron(hg, /umbral.*0[.,]?85/i)) ??
@@ -474,9 +480,16 @@ function renderHipotesisEspecificas(r) {
   const lista = Array.isArray(r.hipotesis_especificas) ? r.hipotesis_especificas : [];
   $("he-cards").innerHTML = lista.map((h, i) => {
     const n = dimNumero(h.codigo, i);
-    const sig = esSi(h.significativa_wilcoxon);
+    
+    // Se asume que el backend manda el estado general en el texto, pero buscamos la sig. de MAE
+    const sig = esSi(h.significativa_wilcoxon) || (h.diferencia_MAE > 0 && h.p_valor < 0.05);
     const gini = Number(h.importancia_gini_dimension);
     const ancho = isNum(gini) ? Math.max(0, Math.min(1, gini)) * 100 : 0;
+    
+    // Cambiado a Diferencia_MAE si existe, si no a Diferencia_R2
+    const difVal = h.diferencia_MAE !== undefined ? h.diferencia_MAE : h.diferencia_R2;
+    const nombreDif = h.diferencia_MAE !== undefined ? "ΔMAE" : "ΔR²";
+
     return `
       <article class="dim-card dim-x${n}">
         <header class="dim-head">
@@ -485,7 +498,7 @@ function renderHipotesisEspecificas(r) {
         </header>
         <p class="hyp-text">${esc(h.texto)}</p>
         <dl class="dim-stats">
-          <div><dt>ΔR²</dt><dd>${fmtSigned(Number(h.diferencia_R2))}</dd></div>
+          <div><dt>${nombreDif}</dt><dd>${fmtSigned(Number(difVal))}</dd></div>
           <div><dt>p-valor</dt><dd>${fmt(Number(h.p_valor))}</dd></div>
           <div><dt>Import. Gini</dt><dd>${fmtPct(gini)}</dd></div>
         </dl>
@@ -498,8 +511,10 @@ function renderHipotesisEspecificas(r) {
 
   if (isNum(Number(r.n_splits_ablation))) N_SPLITS_TSS = Number(r.n_splits_ablation);
   const pMin = 1 / Math.pow(2, N_SPLITS_TSS);
+  
+  // ACTUALIZADO: Nota aclaratoria de validación cruzada expansiva (brecha de 2m)
   $("he-note").textContent = lista.length
-    ? `Prueba de Wilcoxon unilateral con corrección de Holm sobre ${N_SPLITS_TSS} particiones temporales: el menor p-valor sin corregir es ${pMin.toFixed(4)}.`
+    ? `Prueba de Wilcoxon unilateral con corrección de Holm sobre ${N_SPLITS_TSS} particiones expansivas (brecha de 2 meses). Es un contraste exploratorio: los folds comparten datos y no son independientes.`
     : "";
 }
 
@@ -526,7 +541,6 @@ function mensajeDeError(json, status) {
   return `Error del servidor (${status})`;
 }
 
-// Filtro dinámico Provincia → Distrito
 function setupFiltroProvinciaDistrito() {
   const selProv = $("input-provincia");
   const selDist = $("input-distrito");
@@ -599,7 +613,7 @@ function setupPredictForm() {
 
     const raw = Object.fromEntries(new FormData(form).entries());
 
-    // Payload con los nombres que el backend FastAPI espera
+    // Payload con los nombres que el backend FastAPI espera (incluyendo las nuevas variables de X4)
     const data = {
       ANO:            Number(raw.ANO),
       MES:            Number(raw.MES),
@@ -608,6 +622,8 @@ function setupPredictForm() {
       PRODUCCION:     Number(raw.PRODUCCION),
       PRECIO_LAG1:    Number(raw.PRECIO_LAG1),
       MEDIA_MOVIL_3:  Number(raw.MEDIA_MOVIL_3),
+      VARIACION_PRECIO_PREVIA: Number(raw.VARIACION_PRECIO_PREVIA || 0),
+      MESES_DESDE_PRECIO_PREVIO: Number(raw.MESES_DESDE_PRECIO_PREVIO || 1),
       PROVINCIA:      raw.PROVINCIA,
       DISTRITO:       raw.DISTRITO,
       COD_CULTIVO:    Number(raw.CULTIVO),

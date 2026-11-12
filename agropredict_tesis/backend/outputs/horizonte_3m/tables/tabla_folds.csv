@@ -1,0 +1,16 @@
+Etapa,Fold,esquema_cv,n_entrenamiento,entrena_desde,entrena_hasta,n_validacion,valida_desde,valida_hasta,meses_entre_fin_entrenamiento_y_validacion,comparte_mes_limite,pct_valid_con_historial
+Tuning (solo entrenamiento),1,"MesesExpansivo (meses completos, brecha=2 m)",1337,201508,201605,1766,201608,201708,3,False,94.45073612684031
+Tuning (solo entrenamiento),2,"MesesExpansivo (meses completos, brecha=2 m)",3098,201508,201706,1591,201709,201809,3,False,96.92017598994343
+Tuning (solo entrenamiento),3,"MesesExpansivo (meses completos, brecha=2 m)",4841,201508,201807,1900,201810,201912,3,False,97.05263157894737
+Tuning (solo entrenamiento),4,"MesesExpansivo (meses completos, brecha=2 m)",6471,201508,201910,1438,202001,202012,3,False,96.52294853963839
+Tuning (solo entrenamiento),5,"MesesExpansivo (meses completos, brecha=2 m)",7884,201508,202010,1626,202101,202203,3,False,97.84747847478474
+Ablación (entrenamiento+validación),1,"MesesExpansivo (meses completos, brecha=2 m)",943,201508,201512,1123,201603,201611,3,False,72.75155832591274
+Ablación (entrenamiento+validación),2,"MesesExpansivo (meses completos, brecha=2 m)",1961,201508,201609,1079,201612,201707,3,False,95.8294717330862
+Ablación (entrenamiento+validación),3,"MesesExpansivo (meses completos, brecha=2 m)",2927,201508,201705,1115,201708,201803,3,False,96.41255605381166
+Ablación (entrenamiento+validación),4,"MesesExpansivo (meses completos, brecha=2 m)",4229,201508,201801,1144,201804,201812,3,False,97.37762237762237
+Ablación (entrenamiento+validación),5,"MesesExpansivo (meses completos, brecha=2 m)",5105,201508,201810,921,201901,201910,3,False,97.50271444082519
+Ablación (entrenamiento+validación),6,"MesesExpansivo (meses completos, brecha=2 m)",6351,201508,201908,1159,201911,202007,3,False,96.54874892148403
+Ablación (entrenamiento+validación),7,"MesesExpansivo (meses completos, brecha=2 m)",7228,201508,202005,1062,202008,202105,3,False,96.23352165725048
+Ablación (entrenamiento+validación),8,"MesesExpansivo (meses completos, brecha=2 m)",8515,201508,202103,1165,202106,202112,3,False,98.45493562231759
+Ablación (entrenamiento+validación),9,"MesesExpansivo (meses completos, brecha=2 m)",9380,201508,202110,938,202201,202209,3,False,98.29424307036247
+Ablación (entrenamiento+validación),10,"MesesExpansivo (meses completos, brecha=2 m)",10516,201508,202207,1055,202210,202306,3,False,95.63981042654028

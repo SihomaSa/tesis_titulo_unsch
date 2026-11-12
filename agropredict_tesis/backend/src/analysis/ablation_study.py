@@ -49,6 +49,7 @@ from sklearn.model_selection import TimeSeriesSplit
 from src import tracking
 from src.config import ALPHA, N_SPLITS_ABLATION, OUT_TAB
 from src.models.pipelines import build_pipeline
+from src.data.splits import MesesExpansivo
 
 X4 = "X4_Economica_Historica"
 
@@ -76,8 +77,13 @@ def _wilcoxon_mayor(a, b):
 
 
 def run_ablation(X, y, idx_dev, features, dimensiones, params_modelo, rapido=False,
-                 clave="rf", sufijo="", nombre_modelo=None):
+                 clave="rf", sufijo="", nombre_modelo=None, mes_idx=None, gap=0):
     n_splits = 4 if rapido else N_SPLITS_ABLATION
+    Xd, yd = X.iloc[idx_dev], y.iloc[idx_dev]
+    if mes_idx is None:                       # comportamiento anterior (reproduce lo ya entregado)
+        tss = TimeSeriesSplit(n_splits=n_splits)
+    else:                                     # v2: meses completos + brecha
+        tss = MesesExpansivo(np.asarray(mes_idx)[idx_dev], n_splits=n_splits, gap=gap)
     Xd, yd = X.iloc[idx_dev], y.iloc[idx_dev]
     tss = TimeSeriesSplit(n_splits=n_splits)
     params = {f"model__{k}": v for k, v in params_modelo.items()}

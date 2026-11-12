@@ -1,0 +1,2 @@
+Modelo,Subconjunto,n_registros,R2,IC95_inf,IC95_sup,n_meses
+LightGBM sobre persistencia,Solo con historial previo,2099,0.7411311155940801,0.6493341837813168,0.7834199065039649,16

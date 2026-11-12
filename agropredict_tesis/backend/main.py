@@ -11,6 +11,7 @@ resultados con los números reales.
 
     python main.py --rapido      # prueba de humo (pocos minutos, menos búsqueda)
     python main.py --datos RUTA  # otro CSV
+    python main.py --horizonte 3 # v2: horizonte fijo de 3 meses
 """
 import argparse
 import os
@@ -33,6 +34,14 @@ def _forzar_utf8():
 
 _forzar_utf8()
 
+# (a) Pre-parseo de --horizonte ANTES de importar src.config,
+#     para que config ya vea la carpeta de salida correcta.
+_pre = argparse.ArgumentParser(add_help=False)
+_pre.add_argument("--horizonte", type=int, default=None)
+_h = _pre.parse_known_args()[0].horizonte
+if _h is not None:
+    os.environ["AGRO_OUT_SUBDIR"] = f"horizonte_{_h}m"
+
 os.environ.setdefault("MPLBACKEND", "Agg")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -40,7 +49,7 @@ from src import tracking
 from src.analysis import anomalias, segmentos
 from src.analysis.ablation_study import run_ablation
 from src.analysis.interpretabilidad import interpretar
-from src.analysis import cierre_observaciones,depuracion_sesgo, documentacion, robustez, significancia
+from src.analysis import cierre_observaciones, depuracion_sesgo, documentacion, robustez, significancia
 from src.models.evaluacion import baseline_media_movil, baseline_persistencia
 from src.config import DATA_PATH, MATRIZ_CONSISTENCIA, TARGET
 from src.data.data_loader import load_and_clean
@@ -49,6 +58,7 @@ from src.data.splits import split_cronologico
 from src.models.entrenamiento import entrenar_y_comparar
 from src.models.pipelines import NOMBRES
 from src.reporting.texto_tesis import generar_texto
+from src.reporting import cambios                       # (b) nuevo import
 from src.visualization import figuras as fg
 import numpy as np
 
@@ -58,6 +68,9 @@ def main():
     ap.add_argument("--rapido", action="store_true", help="prueba de humo con menos iteraciones")
     ap.add_argument("--datos", default=DATA_PATH)
     ap.add_argument("--sin-extras", action="store_true", help="omite los análisis de robustez/significancia (Obs. del jurado)")
+    # (b) nuevo argumento
+    ap.add_argument("--horizonte", type=int, default=None,
+                    help="v2: meses calendario entre el origen y el mes objetivo (1, 3 o 6). Sin esto: análisis anterior")
     a = ap.parse_args()
 
     print("=" * 78)
@@ -69,24 +82,34 @@ def main():
 
     print(f"\n[Fase 1] Problema: {MATRIZ_CONSISTENCIA['problema_general']}")
     print(f"[Fase 1] Variable objetivo: {TARGET} (regresión supervisada)")
+    if a.horizonte:
+        print(f"[v2] Horizonte activo: {a.horizonte} mes(es) calendario")
 
-    df, embudo = load_and_clean(a.datos)                                   # Fases 2-3
-    df, features, dimensiones, catalogo = build_features(df)               # Fase 3
+    # (c) build_features y split_cronologico reciben el horizonte
+    df, embudo = load_and_clean(a.datos)                                                   # Fases 2-3
+    df, features, dimensiones, catalogo = build_features(df, horizonte=a.horizonte)        # Fase 3
     X = df[features].astype(float)
     y = df[TARGET].astype(float)
-    idx_tr, idx_va, idx_te, info_split = split_cronologico(df)             # Fase 3
+    idx_tr, idx_va, idx_te, info_split = split_cronologico(df, horizonte=a.horizonte or 1)  # Fase 3
 
-    res = entrenar_y_comparar(X, y, idx_tr, idx_va, idx_te, features, catalogo, info_split, a.rapido)  # Fases 4-7
+    # FIX: kw_cv / kw_ent deben definirse ANTES de entrenar_y_comparar
+    idx_dev = info_split["idx_dev"]
+    kw_cv = dict(mes_idx=df["MES_IDX"].to_numpy(), gap=info_split["gap_meses"]) if a.horizonte else {}
+    kw_ent = dict(idx_dev=idx_dev, **kw_cv) if a.horizonte else {}
+
+    res = entrenar_y_comparar(X, y, idx_tr, idx_va, idx_te, features, catalogo, info_split,
+                              rapido=a.rapido, **kw_ent)                                    # Fases 4-7
     rf_params = res["mejores_params"]["rf"]
-    idx_dev = np.concatenate([idx_tr, idx_va])
 
     # Obs. 2: la ablación PRINCIPAL se hace con LightGBM (misma familia que el modelo final, hiperparámetros ya
     # ajustados). Random Forest se conserva solo como análisis de robustez (tabla_ablation_wilcoxon.csv).
     print("\n[Fase 7] Contraste de hipótesis: ablation + Wilcoxon + Holm con LightGBM (principal)...")
+    # (d) se agrega **kw_cv
     abl = run_ablation(X, y, idx_dev, features, dimensiones, res["mejores_params"]["lgbm"], a.rapido,
-                       clave="lgbm", sufijo="_lgbm")
+                       clave="lgbm", sufijo="_lgbm", **kw_cv)
     print("\n[Fase 7] Robustez: la misma ablación con Random Forest...")
-    abl_rf = run_ablation(X, y, idx_dev, features, dimensiones, rf_params, a.rapido, clave="rf", sufijo="")
+    # (d) se agrega **kw_cv
+    abl_rf = run_ablation(X, y, idx_dev, features, dimensiones, rf_params, a.rapido, clave="rf", sufijo="", **kw_cv)
 
     print("\n[Fase 8] Interpretabilidad (SHAP + permutación agrupada)...")
     interp = interpretar(res, X, y, idx_va, idx_te, features, dimensiones)
@@ -99,13 +122,16 @@ def main():
 
     if not a.sin_extras:
         print("\n[Fase 9b] Observaciones del jurado: significancia, robustez, documentación y sesgo de depuración...")
+        h = a.horizonte
         df_te, y_te_, X_te = df.iloc[idx_te], y.iloc[idx_te], X.iloc[idx_te]
         med_dev = float(y.iloc[idx_dev].median())
         per_te = df_te["PERIODO"].to_numpy()
-        refs = {"Persistencia": baseline_persistencia(X_te, med_dev), "Media móvil 3": baseline_media_movil(X_te, med_dev)}
+        refs = {"Persistencia": baseline_persistencia(X_te, med_dev),
+                "Media móvil 3": baseline_media_movil(X_te, med_dev)}
         for k, m_ in res["modelos_finales"].items():
             if k != res["clave_sel"]:
                 refs[NOMBRES[k]] = m_.predict(X_te)
+
         print("\n[Obs.1,3] Significancia frente a baselines y otros modelos (pérdidas pareadas por mes, HAC, bloques)")
         significancia.reporte_prueba(per_te, y_te_.to_numpy(), res["pred_test"], res["nombre_sel"], refs)
         print("\n[Obs.3] Significancia SOLO con registros que tienen precio previo real (baseline de persistencia válido)")
@@ -116,34 +142,56 @@ def main():
         print("\n[Obs.3] Robustez de la significancia SOLO con historial real")
         cierre_observaciones.robustez_con_historial(per_te, y_te_.to_numpy(), res["pred_test"], refs,
                                                     res["nombre_sel"], tiene_hist=df_te["TIENE_HISTORIAL"].to_numpy())
+
         p_lgbm = res["mejores_params"]["lgbm"]
         p_res = res["mejores_params"]["lgbm_res"]
+
         print("\n[Obs.9] Ablación con X3 separada en territorio y producto (Holm con 5 pruebas)")
         run_ablation(X, y, idx_dev, features, robustez.dimensiones_x3_separada(dimensiones), p_lgbm, a.rapido,
-                     clave="lgbm", sufijo="_lgbm_x3_separada")
+                     clave="lgbm", sufijo="_lgbm_x3_separada", **kw_cv)
+
         print("\n[Obs.1] Contribución de cada dimensión EN PRUEBA (LightGBM directo, pareado por mes)")
         robustez.contribucion_en_prueba(df, y, idx_dev, idx_te, features, dimensiones, p_lgbm, a.rapido)
+
         print("\n[Obs.9] Contribución EN PRUEBA con X3 separada en territorio y producto")
-        robustez.contribucion_en_prueba(df, y, idx_dev, idx_te, features, robustez.dimensiones_x3_separada(dimensiones),
+        robustez.contribucion_en_prueba(df, y, idx_dev, idx_te, features,
+                                        robustez.dimensiones_x3_separada(dimensiones),
                                         p_lgbm, a.rapido, etiqueta="lgbm_x3_separada")
+
         print("\n[Obs.2] Contribución X1–X3 EN PRUEBA sobre el MODELO FINAL (LightGBM sobre persistencia)")
-        robustez.contribucion_en_prueba_residual(df, y, idx_dev, idx_te, features,
-                                                 robustez.dimensiones_x3_separada(dimensiones), p_res, a.rapido)
+        contrib_res = robustez.contribucion_en_prueba_residual(
+            df, y, idx_dev, idx_te, features,
+            robustez.dimensiones_x3_separada(dimensiones), p_res, a.rapido
+        )
+        robustez.ano_controlado(df, y, idx_dev, idx_te, features, p_res, rapido=a.rapido)
         print("\n[Obs.8] Variante con X2 rezagada")
-        robustez.variante_x2_rezagada(df, y, idx_dev, idx_te, features, dimensiones, p_lgbm, a.rapido)
+        robustez.variante_x2_rezagada(df, y, idx_dev, idx_te, features, dimensiones, p_lgbm, a.rapido, horizonte=h)
         print("\n[Obs.8] X2 rezagada / sin X2 sobre el MODELO FINAL")
-        cierre_observaciones.variante_x2_modelo_final(df, y, idx_dev, idx_te, features, dimensiones, p_res, a.rapido)
+        cierre_observaciones.variante_x2_modelo_final(df, y, idx_dev, idx_te, features, dimensiones, p_res, a.rapido, horizonte=h)
+
         print("\n[Obs.2,9] ΔMAE por fold de la ablación y % con historial")
         cierre_observaciones.ablacion_por_fold(df, y, idx_dev, features,
                                                robustez.dimensiones_x3_separada(dimensiones), p_lgbm, a.rapido)
+
         print("\n[Obs.11] Particiones y folds")
-        documentacion.tabla_particiones(df, idx_tr, idx_va, idx_te)
-        documentacion.tabla_folds(df, idx_tr, idx_dev, a.rapido)
+        documentacion.tabla_particiones(df, idx_tr, idx_va, idx_te, horizonte=h)
+        documentacion.tabla_folds(
+            df, idx_tr,
+            info_split["idx_dev"] if h else np.concatenate([idx_tr, idx_va]),
+            rapido=a.rapido, horizonte=h
+        )
+
         print("\n[Obs.4] MAE por brecha al precio previo")
-        documentacion.mae_por_brecha(df_te, y_te_, res["pred_test"], refs["Persistencia"])
+        documentacion.mae_por_brecha(df_te, y_te_, res["pred_test"], refs["Persistencia"], horizonte=h)
+
         print("\n[Obs.12] SHAP e importancia comparada")
         documentacion.shap_detalle(interp, features, dimensiones)
-        documentacion.importancia_comparada(interp, abl, dimensiones)
+        documentacion.shap_detalle(interp, features, dimensiones, clave="shap_directo", sufijo="_directo")
+        documentacion.importancia_comparada(
+            interp, abl, dimensiones,
+            contrib_final=contrib_res,
+            esquema_ablacion="MesesExpansivo" if h else "TimeSeriesSplit"
+        )
 
         print("\n[Obs.10] Sesgo por depuración")
         depuracion_sesgo.diagnostico(a.datos)
@@ -172,9 +220,13 @@ def main():
         os.makedirs(destino, exist_ok=True)
         for n in ("figura_comparacion_modelos_prueba.png", "figura_ablation_por_dimension.png",
                   "figura_importancia_por_dimension.png", "figura_real_vs_predicho.png"):
-            origen = os.path.join(os.path.dirname(os.path.abspath(__file__)), "outputs", "figures", n)
+            origen = os.path.join(os.path.dirname(os.path.abspath(__file__)), "outputs", _SUB_DIR(), "figures", n)
             if os.path.exists(origen):
                 shutil.copy(origen, destino)
+
+    # (e) registrar el cambio de versión cuando se corre con horizonte
+    if a.horizonte:
+        cambios.escribir(a.horizonte)
 
     print("\n" + "=" * 78)
     print("LISTO. Revisa:")
@@ -185,6 +237,11 @@ def main():
     for r in rutas:
         print("   ·", r)
     print("=" * 78)
+
+
+def _SUB_DIR():
+    """Devuelve el subdirectorio de salida activo ('' o 'horizonte_3m')."""
+    return os.environ.get("AGRO_OUT_SUBDIR", "")
 
 
 if __name__ == "__main__":

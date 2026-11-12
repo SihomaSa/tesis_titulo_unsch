@@ -77,7 +77,7 @@
       <div class="table-scroll"><table id="tabla-modelos" class="data-table"></table></div>
 
       <h2 class="section-title">Ablation study por dimensión <span class="tag">Hipótesis</span></h2>
-      <p class="section-lead">R² del modelo al excluir cada dimensión, comparado con el modelo completo (línea punteada). La significancia se evalúa con la prueba de Wilcoxon.</p>
+      <p class="section-lead">Impacto de excluir cada dimensión en el R² del modelo (línea punteada: modelo completo). La métrica principal de decisión es el ΔMAE, reportado en la tabla inferior y evaluado con Wilcoxon + Holm.</p>
       <div class="chart-wrap is-loading" id="chart-ablation-wrap"><canvas id="chart-ablation" aria-label="R² al excluir cada dimensión" role="img"></canvas></div>
       <div class="table-scroll"><table id="tabla-ablation" class="data-table"></table></div>
 
@@ -87,7 +87,7 @@
       </p>
       <div class="figures-grid">
         <figure><img loading="lazy" src="assets/figures/figura_comparacion_modelos_prueba.png" alt="Dashboard de comparación de 4 modelos" /><figcaption><b>Fig. 1.</b> Comparación de modelos y baselines (prueba)</figcaption></figure>
-        <figure><img loading="lazy" src="assets/figures/figura_ablation_por_dimension.png" alt="Ablation study" /><figcaption><b>Fig. 2.</b> Ablation study por dimensión</figcaption></figure>
+        <figure><img loading="lazy" src="assets/figures/figura_ablation_por_dimension.png" alt="Ablation study" /><figcaption><b>Fig. 2.</b> Ablation study por dimensión (ΔMAE)</figcaption></figure>
         <figure><img loading="lazy" src="assets/figures/figura_importancia_por_dimension.png" alt="Importancia de variables" /><figcaption><b>Fig. 3.</b> Importancia por dimensión (ganancia, SHAP, permutación)</figcaption></figure>
         <figure><img loading="lazy" src="assets/figures/figura_real_vs_predicho.png" alt="Real versus predicho" /><figcaption><b>Fig. 4.</b> Real vs. predicho (modelo final)</figcaption></figure>
       </div>
@@ -99,7 +99,7 @@
       <div id="hg-card"></div>
 
       <h2 class="section-title">Hipótesis específicas</h2>
-      <p class="section-lead">Efecto de excluir cada dimensión sobre el R², su significancia (Wilcoxon) y el peso de la dimensión en la importancia del modelo.</p>
+      <p class="section-lead">Efecto de excluir cada dimensión sobre el MAE (ΔMAE, métrica primaria) y el R² (ΔR², métrica complementaria), su significancia estadística (Wilcoxon + Holm) y el peso de la dimensión en la importancia del modelo.</p>
       <div id="he-cards" class="grid-dims"></div>
       <p id="he-note" class="fineprint"></p>
     </section>
@@ -178,15 +178,7 @@
 
               <label>Distrito
                 <select name="DISTRITO" id="input-distrito" required>
-                  <option value="PIURA" selected>Piura</option>
-                  <option value="CASTILLA">Castilla</option>
-                  <option value="CATACAOS">Catacaos</option>
-                  <option value="CURA MORI">Cura Mori</option>
-                  <option value="EL TALLAN">El Tallán</option>
-                  <option value="LA ARENA">La Arena</option>
-                  <option value="LA UNION">La Unión</option>
-                  <option value="LAS LOMAS">Las Lomas</option>
-                  <option value="TAMBO GRANDE">Tambo Grande</option>
+                  <!-- Se llena dinámicamente con app.js -->
                 </select>
               </label>
 
@@ -236,6 +228,12 @@
               </label>
               <label>Media móvil de 3 meses (S/ por kg)
                 <input type="number" step="any" min="0" name="MEDIA_MOVIL_3" value="2.4" required />
+              </label>
+              <label>Variación precio previa (%)
+                <input type="number" step="any" name="VARIACION_PRECIO_PREVIA" value="0" required />
+              </label>
+              <label>Meses desde el último precio
+                <input type="number" step="1" min="0" name="MESES_DESDE_PRECIO_PREVIO" value="1" required />
               </label>
             </div>
           </fieldset>

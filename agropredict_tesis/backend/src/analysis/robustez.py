@@ -7,9 +7,12 @@ robustez.py — Obs. 1 (HG-b), 2, 8 y 9 del informe del jurado.
      para descartar fuga temporal por disponibilidad de variables.
   1) Contribución de cada dimensión EN PRUEBA: modelo completo vs sin la dimensión,
      con pérdidas pareadas por mes + HAC + Holm (contribución predictiva, no causalidad).
+  +) Efecto de ANO con hiperparámetros fijos y varias semillas (ano_controlado).
 
 Nada de esto toca el modelo final ni la selección: el modelo se elige en validación;
 aquí solo se contrastan hipótesis y se comprueba robustez.
+
+v2: con horizonte, las columnas de X2 rezagada se llaman *_LAG (no *_PREV).
 """
 import os
 
@@ -22,7 +25,15 @@ from src.analysis.ablation_study import run_ablation
 from src.config import ALPHA, OUT_TAB
 from src.models.pipelines import build_pipeline
 
+# columnas de X2 rezagada según la versión (v1 = *_PREV, v2 = *_LAG)
 X2_PREV = ["SIEMBRA_PREV", "COSECHA_PREV", "PRODUCCION_PREV", "RENDIMIENTO_TON_HA_PREV"]
+X2_LAG = ["SIEMBRA_LAG", "COSECHA_LAG", "PRODUCCION_LAG", "RENDIMIENTO_TON_HA_LAG"]
+
+
+def _cols_x2_rezagada(horizonte=None):
+    """Devuelve los nombres de las columnas de X2 rezagada según el horizonte activo.
+    horizonte=None -> análisis anterior (v1, *_PREV); horizonte=int -> v2 (*_LAG)."""
+    return list(X2_LAG) if horizonte is not None else list(X2_PREV)
 
 
 def _params(p_lgbm, rapido):
@@ -83,25 +94,31 @@ def contribucion_en_prueba(df, y, idx_dev, idx_te, features, dimensiones, p_lgbm
     return t
 
 
-def variante_x2_rezagada(df, y, idx_dev, idx_te, features, dimensiones, p_lgbm, rapido=False):
-    """Obs. 8: reemplaza X2 (mismo mes) por X2 de la observación previa y compara en PRUEBA."""
-    faltan = [c for c in X2_PREV if c not in df.columns]
+def variante_x2_rezagada(df, y, idx_dev, idx_te, features, dimensiones, p_lgbm, rapido=False, horizonte=None):
+    """Obs. 8: reemplaza X2 (mismo mes) por X2 de la observación previa y compara en PRUEBA.
+    v2: con horizonte, las columnas son *_LAG (no *_PREV)."""
+    cols_x2 = _cols_x2_rezagada(horizonte)
+    faltan = [c for c in cols_x2 if c not in df.columns]
     if faltan:
-        print(f"[Obs.8] Faltan columnas {faltan}: usa el feature_engineering.py actualizado.")
+        print(f"[Obs.8] Faltan columnas {faltan}: revisa feature_engineering.py "
+              f"({'v2 usa *_LAG' if horizonte is not None else 'v1 usa *_PREV'}).")
         return None
     prm = _params(p_lgbm, rapido)
     yt = y.iloc[idx_te].to_numpy()
     per = df["PERIODO"].iloc[idx_te].to_numpy()
     x2 = dimensiones["X2_Productiva"]
-    esc = {"Original (X2 del mismo mes)": features,
-           "X2 rezagada (observación previa)": [f for f in features if f not in x2] + X2_PREV,
+
+    # Etiqueta corregida para evitar confusión bajo h=3
+    esc = {"Original (X2 según horizonte)": features,
+           "X2 rezagada (observación previa)": [f for f in features if f not in x2] + cols_x2,
            "Sin X2": [f for f in features if f not in x2]}
+
     preds = {n: _ajusta_predice(df, fs, idx_dev, idx_te, prm) for n, fs in esc.items()}
-    base = preds["Original (X2 del mismo mes)"]
+    base = preds["Original (X2 según horizonte)"]
     filas = []
     for n, p in preds.items():
         fila = {"Escenario": n, "n_variables": len(esc[n]), "R2": r2_score(yt, p), "MAE": mean_absolute_error(yt, p)}
-        if n != "Original (X2 del mismo mes)":
+        if n != "Original (X2 según horizonte)":
             d = sg.perdida_mensual(per, yt, p, base)   # >0 => el original es mejor que la variante
             h = sg.hac_media(d)
             fila.update({"Dif_MAE_vs_original": mean_absolute_error(yt, p) - mean_absolute_error(yt, base),
@@ -164,3 +181,56 @@ def contribucion_en_prueba_residual(df, y, idx_dev, idx_te, features, dimensione
     t.to_csv(os.path.join(OUT_TAB, f"tabla_contribucion_dimensiones_prueba_{etiqueta}.csv"), index=False)
     print(t[["Dimension", "Dif_MAE_mensual", "IC95_inf", "IC95_sup", "meses_completo_mejor", "p_holm", "Contribuye"]].to_string(index=False))
     return t
+
+
+# ---------------------------------------------------------------------------
+# Efecto de ANO: MISMOS hiperparámetros, varias semillas (aísla ANO del ruido de la búsqueda)
+# ---------------------------------------------------------------------------
+def ano_controlado(df, y, idx_dev, idx_te, features, p_res, semillas=(0, 1, 2, 3, 4), rapido=False):
+    """Aísla el efecto de ANO: MISMOS hiperparámetros (los del modelo final), solo cambia la lista de variables.
+    Promedia varias semillas para separar el efecto de ANO del ruido del muestreo (subsample).
+
+    FIX: la semilla se pasa explícitamente en `prm` con las claves que acepta el pipeline:
+    base__model__seed, base__model__bagging_seed y base__model__feature_fraction_seed.
+    Sin esto, LightGBM con subsample=1 y colsample_bytree=1 es determinista y las 5 semillas
+    producen el mismo modelo (DE = 0)."""
+    from src.models.evaluacion import baseline_persistencia
+    base_prm = params_residual(p_res, rapido)
+    yt = y.iloc[idx_te].to_numpy()
+    per = df["PERIODO"].iloc[idx_te].to_numpy()
+    esc = {"Con ANO": list(features), "Sin ANO": [f for f in features if f != "ANO"]}
+    med = float(y.iloc[idx_dev].median())
+    preds, filas = {}, []
+
+    for nom, feats in esc.items():
+        Xv = df[feats].astype(float)
+        ps = []
+        for s in semillas:
+            # FIX: la semilla va en el dict de hiperparámetros del pipeline residual
+            prm = dict(base_prm)
+            prm["base__model__seed"] = int(s)
+            prm["base__model__bagging_seed"] = int(s)
+            prm["base__model__feature_fraction_seed"] = int(s)
+            pipe = build_pipeline("lgbm_res", feats, **prm)
+            pipe.fit(Xv.iloc[idx_dev], df["PRECIO_CHACRA"].astype(float).iloc[idx_dev])
+            p = pipe.predict(Xv.iloc[idx_te]); ps.append(p)
+            filas.append({"Especificacion": nom, "Semilla": s, "n_variables": len(feats),
+                          "R2": r2_score(yt, p), "MAE": mean_absolute_error(yt, p)})
+        preds[nom] = np.mean(ps, axis=0)
+
+    t = pd.DataFrame(filas)
+    res = t.groupby("Especificacion").agg(n_variables=("n_variables", "first"), R2_media=("R2", "mean"), R2_sd=("R2", "std"),
+                                          MAE_media=("MAE", "mean"), MAE_sd=("MAE", "std")).reset_index()
+    pers = baseline_persistencia(df[features].astype(float).iloc[idx_te], med)
+    d = sg.perdida_mensual(per, yt, preds["Sin ANO"], preds["Con ANO"])   # > 0 => con ANO es mejor
+    h = sg.hac_media(d); lo, hi, _ = sg.bootstrap_bloques_media(d)
+    for nom in esc:
+        dp = sg.perdida_mensual(per, yt, pers, preds[nom])                # > 0 => el modelo supera a la persistencia
+        hp = sg.hac_media(dp)
+        res.loc[res.Especificacion == nom, "Dif_MAE_vs_persistencia_mensual"] = hp["media"]
+        res.loc[res.Especificacion == nom, "p_vs_persistencia_HAC"] = hp["p_unilateral"]
+    res["Dif_MAE_conANO_vs_sinANO"] = h["media"]; res["IC95_inf"] = lo; res["IC95_sup"] = hi; res["p_HAC_conANO_mejor"] = h["p_unilateral"]
+    t.to_csv(os.path.join(OUT_TAB, "tabla_ano_controlado_semillas.csv"), index=False)
+    res.to_csv(os.path.join(OUT_TAB, "tabla_ano_controlado.csv"), index=False)
+    print(res.to_string(index=False))
+    return res

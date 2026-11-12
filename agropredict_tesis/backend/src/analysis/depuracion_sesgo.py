@@ -4,6 +4,8 @@ depuracion_sesgo.py — Obs. 10 del informe del jurado.
   (a) tabla_motivos_exclusion.csv     por qué se descartó cada registro (mismo orden del embudo)
   (b) tabla_sesgo_depuracion.csv      cultivo / provincia / año: % antes vs % después y tasa de retención
       tabla_sesgo_chi2.csv            ¿la exclusión depende de la categoría? (chi², V de Cramér)
+      tabla_sesgo_chi2_regla_cosecha.csv  lo mismo, aislando solo la regla de cosecha
+      tabla_6a_provincias.csv / tabla_6b_anios.csv / tabla_6c_cultivos_top10.csv   tablas listas para la tesis
   (c) tabla_sensibilidad_depuracion.csv  modelo y baseline con la regla estricta vs relajada
       (COSECHA=0 y PRODUCCION>0 se CONSERVA: puede ser cosecha de otro mes/campaña, no un error)
 """
@@ -21,7 +23,40 @@ from src.models.evaluacion import baseline_persistencia, metricas
 from src.models.pipelines import build_pipeline
 
 
-def diagnostico(path):
+def _chi2(tab):
+    """chi², p, V de Cramér y % de celdas con frecuencia esperada < 5 (validez de la prueba)."""
+    c2, pv, _, esp = chi2_contingency(tab)
+    v = np.sqrt(c2 / (tab.values.sum() * (min(tab.shape) - 1)))
+    return c2, pv, v, float((esp < 5).mean() * 100)
+
+
+def tablas_6abc(s, top=10):
+    """Tablas 6a (provincias), 6b (años) y 6c (cultivos: los `top` que más pierden y más ganan peso).
+
+    Devuelve los rangos de diferencia (pp) que se citan en el párrafo de la sección 4.1.2.
+    """
+    cols = ["Categoria", "pct_inicial", "pct_final", "dif_pp", "tasa_retencion_pct"]
+    t6a = s[s["Variable"] == "PROVINCIA"][cols].sort_values("dif_pp", ascending=False)
+    t6b = s[s["Variable"] == "ANO"][cols].sort_values("Categoria")
+    cult = s[s["Variable"] == "CULTIVO"][cols].sort_values("dif_pp")
+    t6c = pd.concat([cult.head(top).assign(Grupo="Pierden peso"),
+                     cult.tail(top).iloc[::-1].assign(Grupo="Ganan peso")])
+    for nombre, t in (("tabla_6a_provincias", t6a), ("tabla_6b_anios", t6b), ("tabla_6c_cultivos_top10", t6c)):
+        t.round(1).to_csv(os.path.join(OUT_TAB, nombre + ".csv"), index=False)
+    rangos = {k: (float(t["dif_pp"].min()), float(t["dif_pp"].max()))
+              for k, t in (("provincias", t6a), ("anios", t6b))}
+    rangos["cultivos_ganan"] = cult.tail(top)["Categoria"].astype(str).tolist()[::-1]
+    rangos["cultivos_pierden"] = cult.head(top)["Categoria"].astype(str).tolist()
+    print("[Obs.10] Rangos para el párrafo (pp):")
+    print(f"  Provincias: {rangos['provincias'][0]:.1f} a {rangos['provincias'][1]:.1f}")
+    print(f"  Años:       {rangos['anios'][0]:.1f} a {rangos['anios'][1]:.1f}")
+    print(f"  Cultivos que ganan peso:   {', '.join(rangos['cultivos_ganan'][:5])}")
+    print(f"  Cultivos que pierden peso: {', '.join(rangos['cultivos_pierden'][:5])}")
+    return rangos
+
+
+def diagnostico(path, n_esperado=None):
+    """`n_esperado`: tamaño de la muestra de modelado (p. ej. 14393) para verificar que el embudo coincide."""
     raw = pd.read_csv(path, low_memory=False)
     raw["PROVINCIA"] = raw["PROVINCIA"].astype(str).str.strip().str.upper()
     raw = raw[raw["PROVINCIA"].isin(PROVINCIAS_PIURA)].copy()
@@ -36,6 +71,11 @@ def diagnostico(path):
     dup = raw[ret].duplicated(keep="first")
     raw.loc[dup[dup].index, "MOTIVO"] = "Duplicado exacto"
     raw["RETENIDO"] = (raw["MOTIVO"] == "Retenido").astype(int)
+
+    # Control: si no coincide con la muestra de modelado, las tablas describen otra población.
+    if n_esperado is not None:
+        assert int(raw["RETENIDO"].sum()) == n_esperado, (
+            f"Retenidos en el diagnóstico = {int(raw['RETENIDO'].sum()):,} vs muestra de modelado = {n_esperado:,}")
 
     m = raw["MOTIVO"].value_counts().rename_axis("Motivo").reset_index(name="n")
     m["Pct"] = m["n"] / m["n"].sum() * 100
@@ -58,22 +98,22 @@ def diagnostico(path):
         g["dif_pp"] = g["pct_final"] - g["pct_inicial"]
         g["tasa_retencion_pct"] = g["n_final"] / g["n_inicial"] * 100
         filas.append(g)
-        tab = pd.crosstab(raw[var], raw["RETENIDO"])
-        c2, pv, _, _ = chi2_contingency(tab)
-        v = np.sqrt(c2 / (tab.values.sum() * (min(tab.shape) - 1)))
-        chi.append({"Variable": var, "chi2": c2, "p": pv, "V_Cramer": v, "categorias": tab.shape[0]})
+        c2, pv, v, bajas = _chi2(pd.crosstab(raw[var], raw["RETENIDO"]))
+        chi.append({"Variable": var, "chi2": c2, "p": pv, "V_Cramer": v, "categorias": g.shape[0],
+                    "pct_celdas_esp_menor_5": bajas})
     s = pd.concat(filas)[["Variable", "Categoria", "n_inicial", "n_final", "pct_inicial", "pct_final", "dif_pp", "tasa_retencion_pct"]]
     # Efecto ESPECÍFICO de la regla de cosecha: entre los registros que SÍ tienen precio > 0 y X2 completa,
     # ¿qué cultivos/provincias/años pierde la regla COSECHA=0 y PRODUCCION>0?  (aísla el filtro discutible
-    # del 69 % de 'sin precio', que es estructural y no una decisión del investigador)
-    base = raw[raw["MOTIVO"].isin(["Retenido", "Duplicado exacto", "COSECHA=0 y PRODUCCION>0"])].copy()
+    # del 69 % de 'sin precio', que es estructural y no una decisión del investigador).
+    # Se excluyen los duplicados: no son efecto de la regla y, si se dejaran, contarían como "no retenidos".
+    base = raw[raw["MOTIVO"].isin(["Retenido", "COSECHA=0 y PRODUCCION>0"])].copy()
     chi_r = []
     for var in ("CULTIVO", "PROVINCIA", "ANO"):
         tab = pd.crosstab(base[var], base["RETENIDO"])
-        c2, pv, _, _ = chi2_contingency(tab)
-        v = np.sqrt(c2 / (tab.values.sum() * (min(tab.shape) - 1)))
+        c2, pv, v, bajas = _chi2(tab)
         chi_r.append({"Variable": var, "chi2": c2, "p": pv, "V_Cramer": v, "categorias": tab.shape[0],
-                      "n_base": int(len(base)), "alcance": "Solo regla de cosecha (entre registros con precio>0 y X2 completa)"})
+                      "pct_celdas_esp_menor_5": bajas, "n_base": int(len(base)),
+                      "alcance": "Solo regla de cosecha (entre registros con precio>0, X2 completa y sin duplicados)"})
     pd.DataFrame(chi_r).to_csv(os.path.join(OUT_TAB, "tabla_sesgo_chi2_regla_cosecha.csv"), index=False)
     print("[Obs.10] Sesgo atribuible SOLO a la regla de cosecha:")
     print(pd.DataFrame(chi_r).round(4).to_string(index=False))
@@ -81,6 +121,7 @@ def diagnostico(path):
     pd.DataFrame(chi).to_csv(os.path.join(OUT_TAB, "tabla_sesgo_chi2.csv"), index=False)
     print(m.to_string(index=False))
     print(pd.DataFrame(chi).round(4).to_string(index=False))
+    tablas_6abc(s)
     return m, s, pd.DataFrame(chi)
 
 

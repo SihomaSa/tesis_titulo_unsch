@@ -2,15 +2,13 @@
 entrenamiento.py — FASES 5, 6 y 7.
 
   Fase 5  Modelado: RF, XGBoost, LightGBM y Regresión Lineal + 2 baselines
-          ingenuos (persistencia y media móvil) que el jurado debe poder usar
-          como vara de comparación.
-  Fase 6  Tuning: RandomizedSearchCV con TimeSeriesSplit SOLO sobre el tramo
-          de entrenamiento (Bergstra & Bengio, 2012).
-  Fase 7  Evaluación: selección del modelo en VALIDACIÓN; el conjunto de
-          PRUEBA se usa una sola vez, con el modelo ya elegido y reentrenado
-          con entrenamiento+validación.
+          ingenuos (persistencia y media móvil).
+  Fase 6  Tuning: RandomizedSearchCV SOLO sobre el tramo de entrenamiento.
+          v2 (mes_idx dado): folds por MESES completos con brecha (MesesExpansivo).
+          Sin mes_idx: TimeSeriesSplit, igual que en lo ya entregado.
+  Fase 7  Evaluación: selección en VALIDACIÓN (menor MAE); PRUEBA una sola vez con el modelo
+          reentrenado con idx_dev (v2: train+val recortado con la brecha de h-1 meses).
 """
-import json
 import os
 
 import joblib
@@ -22,6 +20,7 @@ from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
 
 from src import tracking
 from src.config import (N_ITER_TUNING, N_SPLITS_TUNING, OUT_MOD, OUT_TAB, RANDOM_STATE)
+from src.data.splits import MesesExpansivo
 from src.models.evaluacion import baseline_media_movil, baseline_persistencia, metricas
 from src.models.pipelines import NOMBRES, build_pipeline, espacio_busqueda
 
@@ -30,14 +29,22 @@ def _limpiar(params):
     return {k.split("__")[-1]: v for k, v in params.items()}
 
 
-def entrenar_y_comparar(X, y, idx_tr, idx_va, idx_te, features, catalogo, info_split, rapido=False):
+def entrenar_y_comparar(X, y, idx_tr, idx_va, idx_te, features, catalogo, info_split, rapido=False,
+                        idx_dev=None, mes_idx=None, gap=0):
     n_iter = 4 if rapido else N_ITER_TUNING
     n_spl = 3 if rapido else N_SPLITS_TUNING
     Xtr, ytr = X.iloc[idx_tr], y.iloc[idx_tr]
     Xva, yva = X.iloc[idx_va], y.iloc[idx_va]
     Xte, yte = X.iloc[idx_te], y.iloc[idx_te]
     mediana_tr = float(ytr.median())
-    tss = TimeSeriesSplit(n_splits=n_spl)
+
+    if mes_idx is None:                                   # comportamiento anterior
+        tss = TimeSeriesSplit(n_splits=n_spl)
+        esquema_cv = "TimeSeriesSplit (por registros)"
+    else:                                                 # v2: meses completos + brecha
+        tss = MesesExpansivo(np.asarray(mes_idx)[idx_tr], n_splits=n_spl, gap=gap)
+        esquema_cv = f"MesesExpansivo (meses completos, brecha={gap} m)"
+    print(f"[Fase 6] Esquema de CV del tuning: {esquema_cv}")
 
     modelos, mejores_params, cv_mae, r2_folds = {}, {}, {}, {}
     with tracking.run("02_tuning_y_comparacion"):
@@ -58,7 +65,7 @@ def entrenar_y_comparar(X, y, idx_tr, idx_va, idx_te, features, catalogo, info_s
                 cv_mae[clave] = float(-bs.best_score_)
                 print(f"         mejor MAE CV={cv_mae[clave]:.4f} | {mejores_params[clave]}")
             modelos[clave] = best
-            # R² por fold temporal (insumo de la Figura "Evolución del R² por fold")
+            # R² por fold temporal (mismos folds que el tuning)
             fr = []
             for a, b in tss.split(Xtr):
                 p = clone(best).fit(Xtr.iloc[a], ytr.iloc[a])
@@ -72,11 +79,10 @@ def entrenar_y_comparar(X, y, idx_tr, idx_va, idx_te, features, catalogo, info_s
         for clave, m in modelos.items():
             filas_val[NOMBRES[clave]] = metricas(yva, m.predict(Xva))
         tabla_val = pd.DataFrame(filas_val).T.reset_index().rename(columns={"index": "Modelo"})
-        tabla_val["R2_CV_fold_media"] = [np.mean(r2_folds[k]) if k in r2_folds and NOMBRES.get(k) == n else np.nan
-                                         for n, k in zip(tabla_val["Modelo"], [None] * len(tabla_val))]
         inv = {v: k for k, v in NOMBRES.items()}
         tabla_val["R2_CV_fold_media"] = [np.mean(r2_folds[inv[n]]) if n in inv else np.nan for n in tabla_val["Modelo"]]
         tabla_val["R2_CV_fold_std"] = [np.std(r2_folds[inv[n]]) if n in inv else np.nan for n in tabla_val["Modelo"]]
+        tabla_val["esquema_cv"] = esquema_cv
         tabla_val.to_csv(os.path.join(OUT_TAB, "tabla_comparacion_validacion.csv"), index=False)
 
         # ---------- Selección en validación (criterio: menor MAE) ----------
@@ -90,8 +96,11 @@ def entrenar_y_comparar(X, y, idx_tr, idx_va, idx_te, features, catalogo, info_s
         q90 = float(np.quantile(res_abs, 0.90))
 
         # ---------- Reentrenamiento train+val y evaluación ÚNICA en PRUEBA ----------
-        Xdev = X.iloc[np.concatenate([idx_tr, idx_va])]
-        ydev = y.iloc[np.concatenate([idx_tr, idx_va])]
+        # v2: idx_dev ya excluye las etiquetas posteriores al origen más temprano de la prueba (brecha h-1)
+        idx_ref = np.asarray(idx_dev) if idx_dev is not None else np.concatenate([idx_tr, idx_va])
+        Xdev, ydev = X.iloc[idx_ref], y.iloc[idx_ref]
+        print(f"[Fase 7] Reajuste final con n={len(idx_ref):,} registros "
+              f"({'idx_dev con brecha' if idx_dev is not None else 'train+val sin brecha'})")
         finales = {k: clone(m).fit(Xdev, ydev) for k, m in modelos.items()}
         filas_test = {}
         med_dev = float(ydev.median())
@@ -117,7 +126,8 @@ def entrenar_y_comparar(X, y, idx_tr, idx_va, idx_te, features, catalogo, info_s
                   "mediana_precio": med_dev}
         ruta = os.path.join(OUT_MOD, "modelo_final.pkl")
         joblib.dump(bundle, ruta)
-        tracking.params({"modelo_seleccionado": nombre_sel, **{f"hp_{k}": v for k, v in mejores_params.items()}})
+        tracking.params({"modelo_seleccionado": nombre_sel, "esquema_cv": esquema_cv,
+                         **{f"hp_{k}": v for k, v in mejores_params.items()}})
         tracking.metrics({f"test_{k}": v for k, v in met_final.items()})
         tracking.artifact(ruta)
 

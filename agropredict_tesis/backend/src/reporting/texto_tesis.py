@@ -115,11 +115,15 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
     dom = max(ref_dim, key=ref_dim.get)
     sig = [k for k in claves if ab.loc[k, "p_holm"] < ALPHA]
     rech = [k for k in claves if ab.loc[k, "p_holm"] >= ALPHA]
-    _ml = {k: v for k, v in ft.items() if "baseline" not in k}
-    _mk = max(_ml, key=lambda k: _ml[k]["R2"])
-    mejor_r2_test = (_mk, _ml[_mk]["R2"])
+    
+    # Fix de "superado por sí mismo": excluir el modelo seleccionado y baselines
+    _ml = {k: v for k, v in ft.items() if "baseline" not in k and k != nom}
+    _mk = max(_ml, key=lambda k: _ml[k]["R2"]) if _ml else (nom, m["R2"])
+    mejor_r2_test = (_mk, _ml[_mk]["R2"] if _ml else m["R2"])
+    
     seg_bajo, seg_alto = float(t_seg.iloc[0]["R2"]), float(t_seg.iloc[1]["R2"])
     hp = pd.read_csv(os.path.join(os.path.dirname(OUT_TXT), "tables", "tabla_hiperparametros_finales.csv"))
+    h_act = rb._horizonte(T)
 
     aviso = ("> **PRUEBA DE HUMO (--rapido):** estos números provienen de una corrida reducida; "
              "vuelve a ejecutar `python main.py` sin `--rapido` antes de pegar nada en la tesis.\n\n") if rapido else ""
@@ -129,7 +133,7 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
     L.append(aviso)
     L.append("**Cómo usarlo:** pega cada sección en el capítulo indicado. Los números ya coinciden con las tablas y "
              "figuras de `outputs/`. Reemplaza las tablas y figuras antiguas por las nuevas. "
-             "Las tablas K–S (particiones, significancia, brecha, contribuciones, sensibilidad, decisión) tienen letras provisionales: renumera todas en orden de aparición en tu documento. "
+             "Las tablas K–T (particiones, significancia, brecha, contribuciones, sensibilidad, decisión, efecto de ANO) tienen letras provisionales: renumera todas en orden de aparición en tu documento. "
              "Donde veas [COMPLETAR] o [VERIFICAR] falta información que el pipeline no tiene (antecedentes, fechas de publicación, fuente del umbral): no la inventes.\n")
 
     # ------------------------------------------------------------------ 4.1
@@ -146,7 +150,7 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
         ["3. Preparación de los datos", "Limpieza, variables derivadas, partición cronológica 70/15/15", "pandas; ingeniería de características", "Géron (2023); Kuhn y Johnson (2013)"],
         ["4. Construcción del pipeline", "Imputación, escalado y codificación encapsuladas con el modelo", "Pipeline de scikit-learn", "Pedregosa et al. (2011)"],
         ["5. Modelado", "Random Forest, XGBoost, LightGBM y Regresión Lineal frente a dos baselines", "scikit-learn, xgboost, lightgbm", "Chen y Guestrin (2016)"],
-        ["6. Ajuste de hiperparámetros", "Búsqueda aleatoria con validación cruzada temporal", "RandomizedSearchCV + TimeSeriesSplit", "Bergstra y Bengio (2012)"],
+        ["6. Ajuste de hiperparámetros", "Búsqueda aleatoria con validación cruzada temporal", "RandomizedSearchCV + validación temporal por meses", "Bergstra y Bengio (2012)"],
         ["7. Evaluación", "R², MAE, RMSE y MAPE; contraste de hipótesis (Wilcoxon + Holm); pérdidas pareadas con errores HAC", "scikit-learn, SciPy", "Hyndman y Koehler (2006); Holm (1979); Newey y West (1987) [VERIFICAR cada cita]"],
         ["8. Interpretabilidad", "Valores SHAP y permutación agrupada por dimensión", "shap", "Lundberg y Lee (2017)"],
         ["9. Validación y despliegue", "Evaluación final en prueba, API REST y aplicación web", "FastAPI, Firebase, Railway", "Géron (2023)"],
@@ -181,10 +185,24 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
              f"variable contiene información del precio que se desea predecir (control de fuga de datos). "
              f"Los valores faltantes (el primer registro de cada serie carece de historial) se imputan con la mediana calculada únicamente con "
              f"datos de entrenamiento, dentro del pipeline.\n")
-    tv = pd.DataFrame([[d["codigo"], d["nombre"], len(dimensiones[d["clave"]]), ", ".join(dimensiones[d["clave"]])]
-                       for d in MATRIZ_CONSISTENCIA["dimensiones"]], columns=["Dimensión", "Nombre", "N.º", "Variables"])
+    filas_c = []
+    for d in MATRIZ_CONSISTENCIA["dimensiones"]:
+        vs = dimensiones[d["clave"]]
+        filas_c.append([d["codigo"], d["nombre"], len(vs), ", ".join(vs)])
+        if d["clave"] == "X3_Geografica":
+            filas_c.append(["X3a", "↳ Territorio (subconjunto de X3)", 2, "PROVINCIA_enc, DISTRITO_enc"])
+            filas_c.append(["X3b", "↳ Producto (subconjunto de X3)", 1, "CULTIVO_enc"])
+    tv = pd.DataFrame(filas_c, columns=["Dimensión", "Nombre", "N.º", "Variables"])
     L.append("**Tabla C.** Variables predictoras por dimensión\n")
-    L.append(_md_tabla(tv, {"MAPE": lambda v: N(v, 1), "WAPE": lambda v: N(v, 1)}) + "\n")
+    L.append(_md_tabla(tv) + "\n")
+    _nota = (f"*Nota.* Total: {len(features)} variables (X3a y X3b son subconjuntos de X3 y no se suman aparte). "
+             "X3a: provincia y distrito, codificados de forma ordinal; X3b: cultivo, codificado desde COD_CULTIVO, nivel nominal. "
+             "UBIGEO solo se usó para verificar la pertenencia a Piura (criterio de inclusión), no como predictor. ")
+    if h_act is not None:
+        _nota += f"Con horizonte h = {h_act}, las variables de X2 corresponden a la observación previa disponible en el origen del pronóstico. "
+    _nota += ("ANO se conserva conforme a la matriz de consistencia; su efecto se evalúa en la sección 4.3.5 (Tabla T). " if "ANO" in features
+              else "ANO no se incluyó en esta corrida. ")
+    L.append(_nota + "Elaboración propia.\n")
     L.append(f"Los datos se ordenaron cronológicamente y se dividieron en tres conjuntos sin mezclar períodos: entrenamiento "
              f"({MILES(sp['n_train'])} registros, {MES(sp['train_desde'])} a {MES(sp['train_hasta'])}), validación "
              f"({MILES(sp['n_val'])}, hasta {MES(sp['val_hasta'])}) y prueba ({MILES(sp['n_test'])}, hasta {MES(sp['test_hasta'])}), "
@@ -202,8 +220,10 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
              "mínima: un modelo de Machine Learning solo aporta valor si los supera.\n")
 
     L.append("### 4.1.6. Fase 6 — Ajuste de hiperparámetros\n")
+    _cv_txt = ("validación cruzada temporal con folds expansivos por meses completos y brecha entre entrenamiento y validación"
+               if h_act is not None else "validación cruzada temporal (TimeSeriesSplit)")
     L.append("Los hiperparámetros (valores de configuración fijados antes del entrenamiento, a diferencia de los parámetros que el modelo aprende de los datos) "
-             f"se optimizaron con búsqueda aleatoria (Bergstra y Bengio, 2012) y validación cruzada temporal (TimeSeriesSplit), usando únicamente el tramo de "
+             f"se optimizaron con búsqueda aleatoria (Bergstra y Bengio, 2012) y {_cv_txt}, usando únicamente el tramo de "
              f"entrenamiento y el MAE como criterio. La Tabla D muestra la configuración elegida.\n")
     L.append("**Tabla D.** Hiperparámetros seleccionados\n")
     def _cfg(r):
@@ -285,6 +305,7 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
              f"Se aplicó la prueba de rangos con signo de Wilcoxon para muestras pareadas, unilateral, con corrección de Holm (α = {ALPHA}). Con {abl['n_splits']} particiones el p-valor mínimo alcanzable es {2**-abl['n_splits']:.5f}. \n"
              "Los resultados se replicaron en el conjunto de prueba y sobre el modelo final con pérdidas pareadas por mes, y con Random Forest como análisis de robustez (`tabla_ablation_wilcoxon.csv`).\n")
     L.extend(rb.bloque_hipotesis(T, clasif, ALPHA, nom, base, m, mm3, UMBRAL_R2_OFICIAL, cumple))
+    L.extend(rb.bloque_ano(T, ALPHA))
     if T["abl_lgbm"] is None:   # respaldo si no se corrieron los extras (--sin-extras)
         tabla = ab.reset_index()[["Dimension", "R2_completo", "R2_sin_dim", "Diferencia_R2", "p_valor", "p_holm", "Significativa_estadistica"]]
         tabla.columns = ["Dimensión excluida", "R² completo", "R² sin la dimensión", "ΔR²", "p (Wilcoxon)", "p (Holm)", "¿Significativa?"]
@@ -292,8 +313,6 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
         L.append(_md_tabla(tabla, {"p (Wilcoxon)": P, "p (Holm)": P}) + "\n")
         L.append("*Nota.* Corrida sin análisis extra (`--sin-extras`): faltan los contrastes en prueba, sobre el modelo final y las significancias frente a baselines.\n")
     L.append("**Figura I.** Ablation por dimensión. → `figura_ablation_por_dimension.png`\n")
-    nombres_h = {"X1_Temporal": "H1 — Dimensión temporal", "X2_Productiva": "H2 — Dimensión productiva",
-                 "X3_Geografica": "H3 — Dimensión geográfica", "X4_Economica_Historica": "H4 — Dimensión económica histórica"}
 
     # ------------------------------------------------------------------ 4.4 discusión
     L.extend(rb.bloque_discusion(T, clasif, nom, m, base, UMBRAL_R2_OFICIAL, cumple, mejor_r2_test))
@@ -320,7 +339,7 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
              f"- **Tablas 3, 4 y 5:** las tres tienen el mismo título; usa las Tablas D, E y F.\n"
              f"- **3.7.2.3:** intervalos de confianza, Redis y Recharts/Leaflet/Angular: la API ahora devuelve un intervalo empírico del 90 %; Redis y Angular no están implementados en el repositorio — retíralos del texto o impleméntalos.\n"
              f"- **Tabla 10 (SUS, uptime, 287 ms):** no provienen del pipeline; ten a mano la evidencia (encuestas, logs).\n"
-             + rb.CORRECCIONES_EXTRA)
+             + rb.CORRECCIONES_EXTRA + rb.CORRECCIONES_ANO)
     md = "\n".join(L)
     ruta_md = os.path.join(OUT_TXT, "texto_resultados_y_conclusiones.md")
     with open(ruta_md, "w", encoding="utf-8") as f:
@@ -351,28 +370,36 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
         json.dump(reporte, f, ensure_ascii=False, indent=2)
 
     # ------------------------------------------------------------------ guía de sustentación
+    if h_act is not None:
+        resp_horizonte = (f"El precio del mes T con un horizonte fijo de h = {h_act} meses: todas las variables de la serie y de X2 usan solo información con mes ≤ T − {h_act}. "
+                          "El pronóstico es condicional a que exista cosecha con precio en el mes objetivo, y se reporta el error según la antigüedad del último precio (Tabla M).")
+    else:
+        resp_horizonte = ("La siguiente observación disponible de cada serie cultivo–provincia–distrito, dado su último precio observado. "
+                          "La distancia puede ser mayor de un mes; por eso se reporta el error por brecha (Tabla M).")
     G = ["# GUÍA DE SUSTENTACIÓN — preguntas probables y respuestas con tus números\n"]
     qa = [
         ("¿Qué metodología siguió para construir el modelo?",
          "CRISP-DM complementado con KDD y las prácticas de Géron (2023), en nueve fases: problema, datos, preparación, pipeline, modelado, ajuste de hiperparámetros, evaluación, interpretabilidad y validación/despliegue. Cada fase tiene respaldo bibliográfico (Tabla A)."),
         ("¿Cómo evitó la fuga de datos?",
-         "Tres controles: (1) las variables históricas usan solo precios de períodos anteriores; (2) la partición es cronológica 70/15/15 sin mezclar períodos; (3) imputación y escalado viven dentro del Pipeline y se ajustan solo con entrenamiento. La prueba se usó una sola vez. Además, como la dimensión productiva (X2) es contemporánea al precio, se repitió la evaluación con X2 rezagada y sin X2: el desempeño no cambia de forma concluyente (Tabla P)."),
+         "Tres controles: (1) las variables históricas y las de X2 usan solo información con mes ≤ T − h (h = 3); (2) la partición es cronológica 70/15/15 con brecha entre conjuntos; "
+         "(3) imputación y escalado viven dentro del Pipeline y se ajustan solo con entrenamiento. La prueba se usó una sola vez; además hay una prueba anti-fuga automática."),
         ("¿Qué son los hiperparámetros y cómo los eligió?",
          "Son valores que se fijan antes de entrenar (profundidad, número de árboles, tasa de aprendizaje); los parámetros, en cambio, los aprende el modelo. Se optimizaron con búsqueda aleatoria y validación cruzada temporal solo en entrenamiento (Tabla D)."),
         ("¿Su modelo es mejor que simplemente repetir el último precio?",
          rb.qa_baseline(T, m, base, mm3)),
         (f"¿Por qué se eligió {nom} si otro modelo tiene mayor R² en prueba?",
-         f"La regla de selección (menor MAE en validación) se fijó antes de ver la prueba; elegir en prueba la contaminaría. Mejor R² en prueba entre los modelos de ML: {mejor_r2_test[0]} ({N(mejor_r2_test[1])}); el elegido logra el menor MAE ({N(m['MAE'])}) y el mayor R²_log ({N(m['R2_log'])})." if mejor_r2_test[0] != nom else "El modelo elegido en validación coincide con el de mejor R² en prueba."),
+         f"La regla de selección (menor MAE en validación) se fijó antes de ver la prueba; elegir en prueba la contaminaría. Mejor R² en prueba entre los modelos de ML: {mejor_r2_test[0]} ({N(mejor_r2_test[1])}); el elegido logra el menor MAE ({N(m['MAE'])}) y el mayor R²_log ({N(m['R2_log'])})." if mejor_r2_test[0] != nom else "El modelo elegido en validación coincide con el de mejor R² entre los modelos de ML en prueba."),
         ("¿Qué hipótesis específicas se respaldaron y cuáles no?",
          rb.qa_hipotesis(clasif, T)),
+        ("¿Por qué incluyó ANO si los árboles no extrapolan?", rb.qa_ano(T)),
         ("¿Por qué el R² completo de la ablation no coincide con el de prueba?",
          f"La ablation principal se hace con {'LightGBM (misma familia que el modelo final)' if abl.get('clave') == 'lgbm' else 'Random Forest'} en particiones temporales del tramo de desarrollo (entrenamiento + validación), no en el conjunto de prueba; sirve para comparar dimensiones entre sí, no para reportar el desempeño final."),
         ("¿Por qué LightGBM/XGBoost/RF y no una red LSTM?",
          "Los datos son series cortas, irregulares y de muchos cultivos; los modelos de árboles manejan bien variables mixtas y pocos datos. Una LSTM global mezclaría cultivos heterogéneos; se deja como trabajo futuro por cultivo."),
         ("¿Cómo sabe que su R² no depende de los cultivos baratos?",
          "La Tabla H desagrega el desempeño por nivel de precio; el rendimiento en cultivos de alto valor es menor y se declara como limitación."),
-        ("¿Qué aporta SHAP?",
-         "Explica cuánto contribuye cada variable a cada predicción. Se agregó por dimensión y se contrastó con la permutación agrupada, que es robusta a la correlación entre variables."),
+        ("¿Qué aporta SHAP y por qué no coincide con la permutación?",
+         "SHAP explica cuánto contribuye cada variable a cada predicción; se agregó por dimensión. La permutación agrupada mide la caída de R² del precio, mientras que SHAP del modelo final está en escala log(precio / último precio); miden cosas distintas y por eso pueden diferir (sección 4.3.4)."),
         ("¿Se imputó la variable objetivo?",
          "No. Los registros sin precio se descartaron y se reportan en el embudo de depuración (Tabla B)."),
         ("¿Qué pasa con el primer registro de cada serie, que no tiene historial?",
@@ -389,13 +416,12 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
         ("¿Por qué las hipótesis específicas ya no dicen «influye»?",
          "Porque el estudio es observacional: una dimensión que mejora el pronóstico fuera de muestra tiene contribución predictiva, pero eso no prueba causalidad. Las hipótesis se contrastan en validación temporal, en prueba y sobre el modelo final (Tabla S)."),
         ("¿Cómo sabe que X2 no filtra información del futuro?",
-         "X2 es contemporánea al precio, así que se repitió la evaluación con X2 rezagada y sin X2 (Tabla P): no hay diferencia concluyente. El desempeño no depende de información contemporánea y, de hecho, X2 no aporta."),
+         "En el modelo con horizonte, X2 está rezagada: solo usa registros disponibles en el origen del pronóstico. Además se comparó con la variante sin X2 (Tabla P) y la diferencia no es concluyente; X2 no aporta de forma detectable."),
         ("¿Por qué la dimensión geográfica cambia entre validación y prueba?",
-         "En validación el efecto es del cultivo y aparece cuando hay menos precios previos; en prueba es del territorio. El cultivo funciona como sustituto del nivel de precio cuando falta historial. La evidencia es inestable y no se afirma que X3 contribuya al modelo final."),
+         "Territorio y cultivo se sustituyen parcialmente porque cada uno identifica en parte la misma serie; sus efectos no son aditivos y cambian según el contraste (Tablas N y O). La evidencia es inestable y no se afirma que X3 contribuya al modelo final."),
         ("¿La muestra final no está sesgada si conserva solo el 11.6 %?",
          "Sí, hay selección fuerte por cultivo (V de Cramér alta en la regla de cosecha). Se reportan los motivos de exclusión, la distribución antes/después y una sensibilidad que relaja la regla (Tablas Q y R); la conclusión cualitativa se mantiene con margen menor, pero los resultados no se generalizan a todos los cultivos."),
-        ("¿Qué horizonte predice el modelo?",
-         "La siguiente observación disponible de cada serie cultivo–provincia–distrito, dado su último precio observado. La distancia puede ser mayor de un mes; por eso se reporta el error por brecha (Tabla M)."),
+        ("¿Qué horizonte predice el modelo?", resp_horizonte),
         ("¿Sus resultados demuestran beneficios económicos para el agricultor?",
          "No. Demuestran desempeño técnico en un conjunto de prueba retrospectivo. El beneficio económico requiere evaluación con usuarios o datos operativos."),
     ]

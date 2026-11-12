@@ -16,11 +16,12 @@ matplotlib.use("Agg")
 # RUTAS
 # ------------------------------------------------------------------
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_PATH = os.environ.get("AGRO_DATA_PATH", os.path.join(BACKEND_DIR, "data", "dataset_agricola.csv"))
-OUT_FIG = os.path.join(BACKEND_DIR, "outputs", "figures")
-OUT_TAB = os.path.join(BACKEND_DIR, "outputs", "tables")
-OUT_MOD = os.path.join(BACKEND_DIR, "outputs", "models")
-OUT_TXT = os.path.join(BACKEND_DIR, "outputs", "tesis_texto")
+DATA_PATH = os.path.join(BACKEND_DIR, "data", "dataset_agricola.csv")
+_SUB = os.environ.get("AGRO_OUT_SUBDIR", "")   # "" = resultados anteriores; "horizonte_3m" = v2
+OUT_FIG = os.path.join(BACKEND_DIR, "outputs", _SUB, "figures")
+OUT_TAB = os.path.join(BACKEND_DIR, "outputs", _SUB, "tables")
+OUT_MOD = os.path.join(BACKEND_DIR, "outputs", _SUB, "models")
+OUT_TXT = os.path.join(BACKEND_DIR, "outputs", _SUB, "tesis_texto")
 for _d in (OUT_FIG, OUT_TAB, OUT_MOD, OUT_TXT):
     os.makedirs(_d, exist_ok=True)
 
@@ -91,3 +92,8 @@ MATRIZ_CONSISTENCIA = {
                        "MESES_DESDE_PRECIO_PREVIO", "TIENE_HISTORIAL"]},
     ],
 }
+# --- v2: horizonte fijo (solo se usa con --horizonte) ---
+HORIZONTES = [1, 3, 6]          # meses calendario entre el origen del pronóstico y el mes objetivo
+X2_MODO = "rezagada"            # "rezagada" (principal) | "contemporanea" (cota superior, no disponible ex ante)
+X2_REZAGO_EXTRA_MESES = 0       # súbelo a 12 si SIEMBRA/COSECHA/PRODUCCION se publican anualmente
+USAR_ANO_V2 = True           # ANO no se puede extrapolar con árboles (obs. 16 )
