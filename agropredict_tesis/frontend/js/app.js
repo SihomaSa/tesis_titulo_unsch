@@ -12,8 +12,8 @@ const DIM_COLORS = { X1: "#1A5276", X2: "#1B6B4A", X3: "#C4960A", X4: "#C0392B" 
 const DIM_NOMBRES = {
   X1_Temporal: "X1 Temporal",
   X2_Productiva: "X2 Productiva",
-  X3_Geografica: "X3 Espacial y de producto",
-  X4_Economica_Historica: "X4 Económica histórica",
+  X3_Espacial_Producto: "X3 Espacial y de producto",
+  X4_Economica_Historica: "X4 Económica Histórica",
 };
 
 const COLUMN_LABELS = {
@@ -494,7 +494,7 @@ function renderHipotesisEspecificas(r) {
       <article class="dim-card dim-x${n}">
         <header class="dim-head">
           <span class="dim-index">${esc(h.codigo)}</span>
-          <span class="badge ${sig ? "sig-yes" : "sig-no"}">${sig ? "Significativa" : "No significativa"}</span>
+          <span class="badge ${sig ? "sig-yes" : "sig-no"}">${sig ? "Contribuye" : "No contribuye"}</span>
         </header>
         <p class="hyp-text">${esc(h.texto)}</p>
         <dl class="dim-stats">

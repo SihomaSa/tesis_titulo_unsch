@@ -64,17 +64,17 @@ COLORES = {
 # MATRIZ DE CONSISTENCIA (Anexo 1)
 # ------------------------------------------------------------------
 _dim = lambda nombre: {
-    "problema_especifico": f"¿Cómo influye la dimensión {nombre} del entorno agroeconómico en la predicción de precios agrícolas mediante técnicas de Machine Learning?",
-    "objetivo_especifico": f"Evaluar la influencia de la dimensión {nombre} del entorno agroeconómico en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
+    "problema_especifico": f"¿En qué medida contribuye predictivamente la dimensión {nombre} del entorno agroeconómico en la eficacia de la predicción de precios agrícolas mediante técnicas de Machine Learning?",
+    "objetivo_especifico": f"Determinar la contribución predictiva de la dimensión {nombre} del entorno agroeconómico en la eficacia de la predicción de precios agrícolas mediante técnicas de Machine Learning.",
     # Obs. 1 del jurado: «influye significativamente» sugería causalidad; se reformula como contribución predictiva.
-    "hipotesis_especifica": f"Excluir la dimensión {nombre} del entorno agroeconómico empeora el pronóstico fuera de muestra del precio agrícola; es decir, la dimensión {nombre} contribuye predictivamente (sin implicar causalidad).",
+    "hipotesis_especifica": f"La dimensión {nombre} del entorno agroeconómico contribuye predictivamente en la eficacia de la predicción de precios agrícolas mediante técnicas de Machine Learning.",
     "hipotesis_especifica_original": f"La dimensión {nombre} del entorno agroeconómico influye significativamente en la predicción de precios agrícolas mediante técnicas de Machine Learning.",
 }
 
 MATRIZ_CONSISTENCIA = {
     "titulo": "Sistema web para la predicción de precios agrícolas mediante técnicas de Machine Learning, Piura, 2025",
-    "problema_general": "¿En qué medida las dimensiones del entorno agroeconómico influyen en la precisión de la predicción de los precios agrícolas mediante técnicas de Machine Learning en la región Piura, 2025?",
-    "objetivo_general": "Determinar la influencia del entorno agroeconómico en la eficacia de las técnicas de Machine Learning para la predicción de precios agrícolas en la región Piura, 2025.",
+    "problema_general": "¿En qué medida las dimensiones del entorno agroeconómico contribuyen predictivamente en la eficacia de la predicción de los precios agrícolas mediante técnicas de Machine Learning en la región Piura, 2025?",
+    "objetivo_general": "Determinar la contribución predictiva del entorno agroeconómico en la eficacia de las técnicas de Machine Learning para la predicción de precios agrícolas en la región Piura, 2025.",
     # Obs. 1: la hipótesis general se separa en eficacia (HG-a) y superación de baselines (HG-b); las dimensiones se contrastan en H1–H4.
     "hipotesis_general": "HG-a: el modelo de Machine Learning seleccionado alcanza un R² ≥ 0.85 en datos no vistos de la región Piura. HG-b: el modelo reduce el error de pronóstico frente a los baselines de persistencia y media móvil.",
     "hipotesis_general_a": "El modelo de Machine Learning seleccionado alcanza un R² ≥ 0.85 en el conjunto de prueba cronológico (región Piura).",
@@ -85,15 +85,10 @@ MATRIZ_CONSISTENCIA = {
          "variables": ["ANO", "MES_NUM", "MES_SEN", "MES_COS", "ESTACION"]},
         {"codigo": "X2", "clave": "X2_Productiva", "nombre": "Dimensión Productiva", **_dim("productiva"),
          "variables": ["SIEMBRA", "COSECHA", "PRODUCCION", "RENDIMIENTO_TON_HA"]},
-        {"codigo": "X3", "clave": "X3_Geografica", "nombre": "Dimensión Geográfica", **_dim("geográfica"),
+        {"codigo": "X3", "clave": "X3_Espacial_Producto", "nombre": "Dimensión Espacial y de producto", **_dim("espacial y de producto"),
          "variables": ["PROVINCIA_enc", "DISTRITO_enc", "CULTIVO_enc"]},
         {"codigo": "X4", "clave": "X4_Economica_Historica", "nombre": "Dimensión Económica Histórica", **_dim("económica histórica"),
          "variables": ["PRECIO_LAG1", "MEDIA_MOVIL_3", "VARIACION_PRECIO_PREVIA",
                        "MESES_DESDE_PRECIO_PREVIO", "TIENE_HISTORIAL"]},
     ],
 }
-# --- v2: horizonte fijo (solo se usa con --horizonte) ---
-HORIZONTES = [1, 3, 6]          # meses calendario entre el origen del pronóstico y el mes objetivo
-X2_MODO = "rezagada"            # "rezagada" (principal) | "contemporanea" (cota superior, no disponible ex ante)
-X2_REZAGO_EXTRA_MESES = 0       # súbelo a 12 si SIEMBRA/COSECHA/PRODUCCION se publican anualmente
-USAR_ANO_V2 = True           # ANO no se puede extrapolar con árboles (obs. 16 )

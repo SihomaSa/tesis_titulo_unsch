@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Dashboard de tesis: comparación de modelos de Machine Learning para predicción de precios agrícolas en la Región Piura." />
+  <meta name="description" content="Dashboard de tesis: comparación de modelos de Machine Learning para la predicción de precios agrícolas en la Región Piura." />
   <title>AgroPredict — Sistema de Predicción de Precios Agrícolas | Piura 2025</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -40,7 +40,7 @@
     <div class="wrap tabs-inner" role="tablist">
       <button class="tab-btn active" id="tab-matriz" data-tab="matriz" role="tab" aria-selected="true" aria-controls="matriz">Matriz de Consistencia</button>
       <button class="tab-btn" id="tab-resultados" data-tab="resultados" role="tab" aria-selected="false" aria-controls="resultados" tabindex="-1">Resultados (Cap. 4)</button>
-      <button class="tab-btn" id="tab-hipotesis" data-tab="hipotesis" role="tab" aria-selected="false" aria-controls="hipotesis" tabindex="-1">Contrastación de Hipótesis</button>
+      <button class="tab-btn" id="tab-hipotesis" data-tab="hipotesis" role="tab" aria-selected="false" aria-controls="hipotesis" tabindex="-1">Contribución Predictiva</button>
       <button class="tab-btn" id="tab-prediccion" data-tab="prediccion" role="tab" aria-selected="false" aria-controls="prediccion" tabindex="-1">Predecir Precio</button>
     </div>
   </nav>
@@ -77,7 +77,7 @@
       <div class="table-scroll"><table id="tabla-modelos" class="data-table"></table></div>
 
       <h2 class="section-title">Ablation study por dimensión <span class="tag">Hipótesis</span></h2>
-      <p class="section-lead">Impacto de excluir cada dimensión en el R² del modelo (línea punteada: modelo completo). La métrica principal de decisión es el ΔMAE, reportado en la tabla inferior y evaluado con Wilcoxon + Holm.</p>
+      <p class="section-lead">Impacto de excluir cada dimensión en el R² del modelo (línea punteada: modelo completo). La métrica principal para evaluar la contribución es el ΔMAE, reportado en la tabla inferior y evaluado con Wilcoxon + Holm.</p>
       <div class="chart-wrap is-loading" id="chart-ablation-wrap"><canvas id="chart-ablation" aria-label="R² al excluir cada dimensión" role="img"></canvas></div>
       <div class="table-scroll"><table id="tabla-ablation" class="data-table"></table></div>
 
@@ -95,11 +95,11 @@
 
     <!-- ============ TAB 3: HIPÓTESIS ============ -->
     <section id="hipotesis" class="tab-content" role="tabpanel" aria-labelledby="tab-hipotesis" hidden>
-      <h2 class="section-title">Contrastación de hipótesis <span class="tag">Cap. 4.3</span></h2>
+      <h2 class="section-title">Análisis de la contribución predictiva <span class="tag">Cap. 4.3</span></h2>
       <div id="hg-card"></div>
 
       <h2 class="section-title">Hipótesis específicas</h2>
-      <p class="section-lead">Efecto de excluir cada dimensión sobre el MAE (ΔMAE, métrica primaria) y el R² (ΔR², métrica complementaria), su significancia estadística (Wilcoxon + Holm) y el peso de la dimensión en la importancia del modelo.</p>
+      <p class="section-lead">Efecto de excluir cada dimensión sobre el MAE (ΔMAE, métrica principal) y el R² (ΔR², métrica complementaria), su significancia estadística (Wilcoxon + Holm) y el peso de la dimensión en la importancia del modelo.</p>
       <div id="he-cards" class="grid-dims"></div>
       <p id="he-note" class="fineprint"></p>
     </section>
