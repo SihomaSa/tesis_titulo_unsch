@@ -92,3 +92,9 @@ MATRIZ_CONSISTENCIA = {
                        "MESES_DESDE_PRECIO_PREVIO", "TIENE_HISTORIAL"]},
     ],
 }
+
+# --- v2: horizonte fijo (solo se usa con --horizonte) ---
+HORIZONTES = [1, 3, 6]          # meses calendario entre el origen del pronóstico y el mes objetivo
+X2_MODO = "inmediata"           # "rezagada" (principal) | "contemporanea" (cota superior, no disponible ex ante)
+X2_REZAGO_EXTRA_MESES = 0       # súbelo a 12 si SIEMBRA/COSECHA/PRODUCCION se publican anualmente
+USAR_ANO_V2 = True              # ANO no se puede extrapolar con árboles (obs. 16)

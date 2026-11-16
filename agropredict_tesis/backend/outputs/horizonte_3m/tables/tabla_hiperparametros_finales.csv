@@ -1,6 +1,6 @@
 modelo,cv_mae,n_estimators,min_samples_leaf,max_features,max_depth,subsample,reg_lambda,min_child_weight,learning_rate,colsample_bytree,subsample_freq,reg_alpha,num_leaves,min_child_samples,objective
 Regresión Lineal,,,,,,,,,,,,,,,
-Random Forest,0.39737735869333224,300.0,2.0,1.0,14.0,,,,,,,,,,
-XGBoost,0.38858441017109896,400.0,,,6.0,0.7,1.0,10.0,0.02,1.0,,,,,
-LightGBM,0.3895872450120502,200.0,,,6.0,0.85,2.0,,0.05,0.7,1.0,2.0,31.0,10.0,
-LightGBM sobre persistencia,0.3719358157817801,600.0,,,6.0,0.7,0.0,,0.02,1.0,1.0,,63.0,30.0,regression_l1
+Random Forest,0.40442962330710275,200.0,2.0,1.0,14.0,,,,,,,,,,
+XGBoost,0.39163699768184673,200.0,,,6.0,0.7,5.0,10.0,0.05,0.85,,,,,
+LightGBM,0.3918862909772168,200.0,,,6.0,0.85,2.0,,0.05,0.7,1.0,2.0,31.0,10.0,
+LightGBM sobre persistencia,0.3749257680876782,200.0,,,4.0,1.0,2.0,,0.1,1.0,1.0,,31.0,30.0,regression_l1

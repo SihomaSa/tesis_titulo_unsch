@@ -21,18 +21,23 @@ class PersistenciaResidual(BaseEstimator, RegressorMixin):
         return ((X["TIENE_HISTORIAL"].to_numpy() == 1) & (X["PRECIO_LAG1"].to_numpy() > 0)
                 & np.isfinite(X["PRECIO_LAG1"].to_numpy()))
 
+    MIN_FILAS_BASE = 20
+
     def fit(self, X, y):
         y = np.asarray(y, float)
         m = self._mascara(X)
         lag = X["PRECIO_LAG1"].to_numpy()
-        self.base_ = clone(self.base).fit(X[m], np.log(y[m] / lag[m]))
+        if m.sum() >= self.MIN_FILAS_BASE:
+            self.base_ = clone(self.base).fit(X[m], np.log(y[m] / lag[m]))
+        else:
+            self.base_ = None   # sin historial suficiente: solo el modelo de respaldo
         self.fallback_ = clone(self.fallback).fit(X, y)
         return self
 
     def predict(self, X):
         out = np.asarray(self.fallback_.predict(X), float)
         m = self._mascara(X)
-        if m.any():
+        if m.any() and self.base_ is not None:
             lag = X["PRECIO_LAG1"].to_numpy()
             out[m] = lag[m] * np.exp(self.base_.predict(X[m]))
         return out

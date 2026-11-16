@@ -30,7 +30,7 @@ P = lambda v: ("<0.001" if v < 0.001 else f"{v:.3f}")
 PP = lambda v: ("p < 0.001" if v < 0.001 else f"p = {v:.3f}")          # para prosa
 PPH = lambda v: ("p Holm < 0.001" if v < 0.001 else f"p Holm = {v:.3f}")
 MILES = lambda n: f"{int(n):,}".replace(",", " ")
-NOM_DIM = {"X1_Temporal": "temporal (X1)", "X2_Productiva": "productiva (X2)", "X3_Geografica": "geográfica (X3)",
+NOM_DIM = {"X1_Temporal": "temporal (X1)", "X2_Productiva": "productiva (X2)", "X3_Espacial_Producto": "geográfica (X3)",
            "X3a_Territorio": "territorio (X3a)", "X3b_Producto": "producto/cultivo (X3b)",
            "X4_Economica_Historica": "económica histórica (X4)"}
 NOM_REF = {"LightGBM": "LightGBM directo"}
@@ -374,7 +374,7 @@ def clasificar(T, alpha):
     ab, ct = ab.set_index("Dimension"), ct.set_index("Dimension")
     cr = None if cr is None else cr.set_index("Dimension")
     mapa = {"X1_Temporal": ["X1_Temporal"], "X2_Productiva": ["X2_Productiva"],
-            "X3_Geografica": ["X3a_Territorio", "X3b_Producto"], "X4_Economica_Historica": []}
+            "X3_Espacial_Producto": ["X3a_Territorio", "X3b_Producto"], "X4_Economica_Historica": []}
     out = {}
     for k in ab.index:
         val = bool(ab.loc[k, "p_mae_holm"] < alpha) if "p_mae_holm" in ab.columns else bool(ab.loc[k, "p_holm"] < alpha)
@@ -447,8 +447,8 @@ def bloque_hipotesis(T, clasif, alpha, nom, base, m, mm3, umbral, cumple):
         L.append(txt + "\n")
     cl = T["c_lgbm"]
     cx = T["c_x3"]
-    if cl is not None and cx is not None and "X3_Geografica" in set(cl["Dimension"]) and "X3a_Territorio" in set(cx["Dimension"]):
-        g = cl[cl["Dimension"] == "X3_Geografica"].iloc[0]
+    if cl is not None and cx is not None and "X3_Espacial_Producto" in set(cl["Dimension"]) and "X3a_Territorio" in set(cx["Dimension"]):
+        g = cl[cl["Dimension"] == "X3_Espacial_Producto"].iloc[0]
         a_ = cx[cx["Dimension"] == "X3a_Territorio"].iloc[0]
         b_ = cx[cx["Dimension"] == "X3b_Producto"].iloc[0]
         if a_["p_holm"] < alpha and g["p_holm"] >= alpha:
@@ -500,7 +500,7 @@ def bloque_hipotesis(T, clasif, alpha, nom, base, m, mm3, umbral, cumple):
                  + (f", pero no es concluyente con registros que tienen precio previo real ({PPH(sh[sh['Referencia']=='Persistencia'].iloc[0]['p_holm'])})" if (sh is not None and not ok_ph) else "") + ".\n")
     if clasif:
         nombres = {"X1_Temporal": "H1 — Dimensión temporal", "X2_Productiva": "H2 — Dimensión productiva",
-                   "X3_Geografica": "H3 — Dimensión geográfica", "X4_Economica_Historica": "H4 — Dimensión económica histórica"}
+           "X3_Espacial_Producto": "H3 — Dimensión espacial y de producto", "X4_Economica_Historica": "H4 — Dimensión económica histórica"}
         filas = []
         for k, c in clasif.items():
             sn = lambda b: "—" if b is None else ("Sí" if b else "No")
@@ -543,7 +543,7 @@ def _frase_dim(k, c, T):
          + ("" if c["final"] is None else f" y {sn(c['final'])} sobre el modelo final") + ". ")
     if k == "X4_Economica_Historica":
         s += ("Concentra la capacidad predictiva, coherente con la inercia de los precios; en el modelo final es además su ancla estructural y no puede retirarse.")
-    elif k == "X3_Geografica":
+    elif k == "X3_Espacial_Producto":
         s += ("Territorio y cultivo se sustituyen parcialmente (identifican en parte la misma serie), por lo que sus efectos no se suman ni se atribuyen por separado con seguridad. "
               "La evidencia debe leerse junto con la separación en X3a y X3b (Tablas N y O).")
     elif k == "X2_Productiva":
@@ -662,7 +662,7 @@ def bloque_discusion(T, clasif, nom, m, base, umbral, cumple, mejor_ml):
                  "**Explicación técnica.** Cuando el último precio es reciente, repetirlo es difícil de superar; el modelo aporta cuando ese precio es antiguo. "
                  "**Antecedentes.** [COMPLETAR: estudios que comparen contra persistencia o modelos ingenuos; si no existen, dilo.] "
                  "**Aporte y límite.** Un modelo de Machine Learning es valioso aquí sobre todo en series con precios previos antiguos; la mejora global es modesta.\n")
-    nombres = {"X1_Temporal": "temporal", "X2_Productiva": "productiva", "X3_Geografica": "geográfica", "X4_Economica_Historica": "económica histórica"}
+    nombres = {"X1_Temporal": "temporal", "X2_Productiva": "productiva", "X3_Espacial_Producto": "espacial y de producto", "X4_Economica_Historica": "económica histórica"}
     for i, (k, c) in enumerate((clasif or {}).items(), 3):
         L.append(f"### 4.4.{i}. Dimensión {nombres[k]}\n")
         L.append(f"**Hallazgo.** {c['estado'].capitalize()}: " + _frase_dim(k, c, T) + " "
@@ -730,7 +730,7 @@ def conclusiones(T, clasif, nom, m, base, ft, umbral, cumple, mejor_ml, shp_txt,
                   + "su desempeño relativo a la persistencia según la antigüedad del último precio es: "
                   + "; ".join(f"{g.replace('Último precio en el origen', 'T-h')}: {r:+.1f} %" for g, r in zip(c['Grupo'], c['Reduccion_MAE_pct'])) + "."))
     if clasif:
-        nm = {"X1_Temporal": "temporal", "X2_Productiva": "productiva", "X3_Geografica": "geográfica", "X4_Economica_Historica": "económica histórica"}
+        nm = {"X1_Temporal": "temporal", "X2_Productiva": "productiva", "X3_Espacial_Producto": "geográfica", "X4_Economica_Historica": "económica histórica"}
         for i, (k, c) in enumerate(clasif.items(), 4):
             C.append(f"{i}. **Dimensión {nm[k]}.** Hipótesis {c['estado'].lower()}. " + _frase_dim(k, c, T))
         n0 = 4 + len(clasif)
@@ -856,12 +856,12 @@ def qa_hipotesis(clasif, T):
     """Respuesta a «¿qué hipótesis específicas se respaldaron?» según la Tabla S."""
     if not clasif:
         return "Corre el pipeline completo (sin --sin-extras) para obtener la consistencia de los contrastes (Tabla S)."
-    nm = {"X1_Temporal": "temporal (H1)", "X2_Productiva": "productiva (H2)", "X3_Geografica": "geográfica (H3)", "X4_Economica_Historica": "económica histórica (H4)"}
+    nm = {"X1_Temporal": "temporal (H1)", "X2_Productiva": "productiva (H2)", "X3_Espacial_Producto": "geográfica (H3)", "X4_Economica_Historica": "económica histórica (H4)"}
     partes = [f"{nm[k]}: {c['estado'].lower()}" for k, c in clasif.items()]
     txt = "Según la consistencia entre validación temporal, prueba y modelo final (Tabla S): " + "; ".join(partes) + ". "
     if clasif.get("X4_Economica_Historica", {}).get("estado") != "NO RESPALDADA":
         txt += ("La información predictiva se concentra en la historia de precios; las demás dimensiones no añaden un aporte detectable y consistente una vez que se conoce el precio previo. ")
-    if clasif.get("X3_Geografica", {}).get("estado", "").startswith("PARCIAL"):
+    if clasif.get("X3_Espacial_Producto", {}).get("estado", "").startswith("PARCIAL"):
         txt += ("La evidencia de la dimensión geográfica no es consistente entre validación, prueba y modelo final. ")
     if clasif.get("X1_Temporal", {}).get("estado", "").startswith("PARCIAL"):
         txt += ("La de la dimensión temporal tampoco es consistente y depende en parte de ANO (sección 4.3.5). ")

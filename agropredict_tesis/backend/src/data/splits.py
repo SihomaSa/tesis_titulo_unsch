@@ -44,7 +44,7 @@ class MesesExpansivo:
         self.n_splits, self.gap = int(n_splits), int(gap)
 
     def get_n_splits(self, X=None, y=None, groups=None):
-        return self.n_splits
+        return sum(1 for _ in self.split(X, y, groups))
 
     def split(self, X=None, y=None, groups=None):
         meses = np.unique(self.mes)

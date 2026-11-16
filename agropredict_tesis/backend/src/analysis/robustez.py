@@ -44,7 +44,7 @@ def _params(p_lgbm, rapido):
 
 
 def dimensiones_x3_separada(dimensiones):
-    d = {k: list(v) for k, v in dimensiones.items() if k != "X3_Geografica"}
+    d = {k: list(v) for k, v in dimensiones.items() if k != "X3_Espacial_Producto"}
     d["X3a_Territorio"] = ["PROVINCIA_enc", "DISTRITO_enc"]
     d["X3b_Producto"] = ["CULTIVO_enc"]
     orden = ["X1_Temporal", "X2_Productiva", "X3a_Territorio", "X3b_Producto", "X4_Economica_Historica"]

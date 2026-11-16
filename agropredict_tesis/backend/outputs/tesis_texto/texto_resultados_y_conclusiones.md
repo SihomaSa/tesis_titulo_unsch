@@ -327,7 +327,7 @@ Criterio de reporte: una hipótesis se declara *respaldada* si resulta significa
 |---|---|---|---|---|---|---|---|---|
 | X1_Temporal | 0.7540 | 0.7524 | 0.0016 | 1.000 | 0.3854 | 0.3832 | -0.0023 | 1.000 |
 | X2_Productiva | 0.7540 | 0.7597 | -0.0057 | 1.000 | 0.3854 | 0.3769 | -0.0085 | 1.000 |
-| X3_Geografica | 0.7540 | 0.6887 | 0.0653 | 0.004 | 0.3854 | 0.4261 | 0.0407 | 0.004 |
+| X3_Espacial_Producto | 0.7540 | 0.6887 | 0.0653 | 0.004 | 0.3854 | 0.4261 | 0.0407 | 0.004 |
 | X4_Economica_Historica | 0.7540 | 0.7291 | 0.0249 | 0.041 | 0.3854 | 0.4492 | 0.0638 | 0.004 |
 
 *Nota.* Wilcoxon pareado unilateral sobre los folds temporales; ΔMAE = MAE sin la dimensión − MAE completo (> 0 favorece incluir la dimensión). Los folds de TimeSeriesSplit se solapan y no son independientes: los p-valores deben leerse con esa cautela. Elaboración propia.

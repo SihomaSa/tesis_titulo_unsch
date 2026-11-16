@@ -71,6 +71,8 @@ def main():
     # (b) nuevo argumento
     ap.add_argument("--horizonte", type=int, default=None,
                     help="v2: meses calendario entre el origen y el mes objetivo (1, 3 o 6). Sin esto: análisis anterior")
+    ap.add_argument("--solo-significancia", action="store_true",
+                    help="entrena y evalúa, imprime la significancia y termina")
     a = ap.parse_args()
 
     print("=" * 78)
@@ -100,7 +102,20 @@ def main():
     res = entrenar_y_comparar(X, y, idx_tr, idx_va, idx_te, features, catalogo, info_split,
                               rapido=a.rapido, **kw_ent)                                    # Fases 4-7
     rf_params = res["mejores_params"]["rf"]
-
+    if a.solo_significancia:
+        df_te, y_te_, X_te = df.iloc[idx_te], y.iloc[idx_te], X.iloc[idx_te]
+        med_dev = float(y.iloc[idx_dev].median())
+        per_te = df_te["PERIODO"].to_numpy()
+        refs = {"Persistencia": baseline_persistencia(X_te, med_dev),
+                "Media móvil 3": baseline_media_movil(X_te, med_dev)}
+        for k, m_ in res["modelos_finales"].items():
+            if k != res["clave_sel"]:
+                refs[NOMBRES[k]] = m_.predict(X_te)
+        significancia.reporte_prueba(per_te, y_te_.to_numpy(), res["pred_test"], res["nombre_sel"], refs)
+        significancia.reporte_prueba_con_historial(per_te, y_te_.to_numpy(), res["pred_test"], res["nombre_sel"], refs,
+                                                   tiene_hist=df_te["TIENE_HISTORIAL"].to_numpy())
+        significancia.robustez_significancia(per_te, y_te_.to_numpy(), res["pred_test"], refs, res["nombre_sel"])
+        return
     # Obs. 2: la ablación PRINCIPAL se hace con LightGBM (misma familia que el modelo final, hiperparámetros ya
     # ajustados). Random Forest se conserva solo como análisis de robustez (tabla_ablation_wilcoxon.csv).
     print("\n[Fase 7] Contraste de hipótesis: ablation + Wilcoxon + Holm con LightGBM (principal)...")
@@ -147,8 +162,23 @@ def main():
         p_res = res["mejores_params"]["lgbm_res"]
 
         print("\n[Obs.9] Ablación con X3 separada en territorio y producto (Holm con 5 pruebas)")
-        run_ablation(X, y, idx_dev, features, robustez.dimensiones_x3_separada(dimensiones), p_lgbm, a.rapido,
-                     clave="lgbm", sufijo="_lgbm_x3_separada", **kw_cv)
+        # <- NUEVO: guardar el resultado en res_x3sep
+        res_x3sep = run_ablation(X, y, idx_dev, features, robustez.dimensiones_x3_separada(dimensiones), p_lgbm, a.rapido,
+                                 clave="lgbm", sufijo="_lgbm_x3_separada", **kw_cv)
+
+        # <- NUEVO: calcular e imprimir el Spearman
+        import numpy as np
+        from scipy.stats import spearmanr
+        fm = res_x3sep["folds_mae"]
+        comp = np.array(fm["completo"])
+        pct_hist = [72.75, 95.83, 96.41, 97.38, 97.50, 96.55, 96.23, 98.45, 98.29, 95.64]
+        for k in ["X1_Temporal", "X2_Productiva", "X3a_Territorio", "X3b_Producto", "X4_Economica_Historica"]:
+            dif = np.array(fm[f"sin_{k}"]) - comp
+            rho, p = spearmanr(dif, pct_hist)
+            print(f"[Spearman] {k}: media={dif.mean():.4f} | sin fold1={dif[1:].mean():.4f} | "
+                  f"ayuda en {(dif>0).sum()}/10 | rho={rho:.4f} p={p:.4f}")
+
+        print("\n[Obs.1] Contribución de cada dimensión EN PRUEBA (LightGBM directo, pareado por mes)")
 
         print("\n[Obs.1] Contribución de cada dimensión EN PRUEBA (LightGBM directo, pareado por mes)")
         robustez.contribucion_en_prueba(df, y, idx_dev, idx_te, features, dimensiones, p_lgbm, a.rapido)
@@ -196,6 +226,8 @@ def main():
         print("\n[Obs.10] Sesgo por depuración")
         depuracion_sesgo.diagnostico(a.datos)
         depuracion_sesgo.sensibilidad(a.datos, params_res=p_res, rapido=a.rapido)
+        print("\n[Obs.8] Periodicidad de X2")
+        depuracion_sesgo.periodicidad_x2(a.datos)
 
     # Figuras
     fg.fig_flujo_metodologico()

@@ -327,7 +327,7 @@ Criterio de reporte: una hipótesis se declara *respaldada* si resulta significa
 |---|---|---|---|---|---|---|---|---|
 | X1_Temporal | 0.7361 | 0.7242 | 0.0119 | 0.322 | 0.3990 | 0.3995 | 0.0006 | 0.846 |
 | X2_Productiva | 0.7361 | 0.7383 | -0.0022 | 0.784 | 0.3990 | 0.3988 | -0.0002 | 0.846 |
-| X3_Geografica | 0.7361 | 0.6781 | 0.0581 | 0.004 | 0.3990 | 0.4557 | 0.0567 | 0.004 |
+| X3_Espacial_Producto | 0.7361 | 0.6781 | 0.0581 | 0.004 | 0.3990 | 0.4557 | 0.0567 | 0.004 |
 | X4_Economica_Historica | 0.7361 | 0.7140 | 0.0222 | 0.006 | 0.3990 | 0.4439 | 0.0449 | 0.004 |
 
 *Nota.* Wilcoxon pareado unilateral sobre los folds temporales; ΔMAE = MAE sin la dimensión − MAE completo (> 0 favorece incluir la dimensión). Los folds son expansivos por meses completos con brecha de 2 mes(es); comparten datos de entrenamiento y son pocos, por lo que el Wilcoxon tiene poder limitado. Es un contraste exploratorio, no confirmatorio. Elaboración propia.

@@ -9,9 +9,7 @@ from matplotlib.patches import FancyBboxPatch
 
 from src.config import COLORES, OUT_FIG, UMBRAL_R2_OFICIAL
 
-DIM_COL = {"X1_Temporal": COLORES["X1"], "X2_Productiva": COLORES["X2"],
-           "X3_Geografica": COLORES["X3"], "X4_Economica_Historica": COLORES["X4"]}
-
+DIM_COL = {"X1_Temporal": "#1A5276", "X2_Productiva": "#1B6B4A", "X3_Espacial_Producto": "#C4960A", "X4_Economica_Historica": "#C0392B"}
 
 def _save(nombre):
     ruta = os.path.join(OUT_FIG, nombre)
@@ -51,7 +49,7 @@ def fig_dimensiones(dimensiones):
         c = DIM_COL[k]
         ax.add_patch(FancyBboxPatch((x, 0.1), 0.9, 1.75, boxstyle="round,pad=0.02", fc="white", ec=c, lw=2))
         ax.text(x + 0.45, 1.68, k.split("_")[0], ha="center", fontsize=12, fontweight="bold", color=c)
-        ax.text(x + 0.45, 1.5, {"X1_Temporal": "Temporal", "X2_Productiva": "Productiva", "X3_Geografica": "Geográfica", "X4_Economica_Historica": "Económica histórica"}[k], ha="center", fontsize=8.5, color=c)
+        ax.text(x + 0.45, 1.5, {"X1_Temporal": "Temporal", "X2_Productiva": "Productiva", "X3_Espacial_Producto": "Espacial y de producto", "X4_Economica_Historica": "Económica histórica"}[k], ha="center", fontsize=8.5, color=c)
         ax.text(x + 0.45, 0.85, "\n".join(vars_), ha="center", va="center", fontsize=7.2)
         ax.annotate("", xy=(2.0, 2.33), xytext=(x + 0.45, 1.87), arrowprops=dict(arrowstyle="->", color=c, lw=1.5))
     return _save("figura_variables_por_dimension.png")

@@ -1,34 +1,17 @@
 """
 ablation_study.py — Contraste de las hipótesis específicas H1–H4.
 
-Se evalúan, con TimeSeriesSplit sobre el tramo de desarrollo (train+val; la
-PRUEBA no se toca), tres familias de modelos con los hiperparámetros ya
-optimizados:
+Se evalúan, con MesesExpansivo (v2) o TimeSeriesSplit (anterior), tres familias
+de modelos con los hiperparámetros ya optimizados:
 
   A) Completo vs. SIN cada dimensión (leave-one-dimension-out)  -> ΔR², ΔMAE y Wilcoxon
   B) SOLO cada dimensión                                          -> poder predictivo propio
   C) X4 (historia de precios) vs. X4 + cada dimensión            -> aporte INCREMENTAL
-
-Cambios (Obs. 2 y 9 del jurado):
-  * `clave` permite repetir la ablación con LightGBM ("lgbm"), la misma familia
-    que el modelo final, además de Random Forest ("rf").
-  * `sufijo` evita sobrescribir la tabla del análisis principal.
-  * `dimensiones` puede ser cualquier partición de variables (p. ej. X3 separada
-    en territorio y producto); solo exige que exista la clave X4_Economica_Historica.
-  * Se reporta también ΔMAE (sin dimensión − completo; > 0 => la dimensión ayuda).
-
-Wilcoxon de rangos con signo pareado, unilateral, con corrección de Holm.
-Los folds de TimeSeriesSplit se solapan: no son independientes (limitación a declarar).
 """
 import os
 import sys
 
 
-# ---------------------------------------------------------------------------
-# FIX: forzar UTF-8 en stdout/stderr antes de imprimir. Evita
-# UnicodeEncodeError (cp1252) con Δ, ², tildes, etc. cuando el módulo
-# se importa o se ejecuta en una consola Windows por defecto.
-# ---------------------------------------------------------------------------
 def _forzar_utf8():
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
@@ -80,14 +63,15 @@ def run_ablation(X, y, idx_dev, features, dimensiones, params_modelo, rapido=Fal
                  clave="rf", sufijo="", nombre_modelo=None, mes_idx=None, gap=0):
     n_splits = 4 if rapido else N_SPLITS_ABLATION
     Xd, yd = X.iloc[idx_dev], y.iloc[idx_dev]
-    if mes_idx is None:                       # comportamiento anterior (reproduce lo ya entregado)
+    
+    # FIX: Elegir el esquema de CV correcto sin sobrescribirlo después
+    if mes_idx is None:
         tss = TimeSeriesSplit(n_splits=n_splits)
-    else:                                     # v2: meses completos + brecha
+    else:
         tss = MesesExpansivo(np.asarray(mes_idx)[idx_dev], n_splits=n_splits, gap=gap)
-    Xd, yd = X.iloc[idx_dev], y.iloc[idx_dev]
-    tss = TimeSeriesSplit(n_splits=n_splits)
+    
     params = {f"model__{k}": v for k, v in params_modelo.items()}
-    if clave == "rf":   # se conserva el tope original para reproducir los resultados ya reportados
+    if clave == "rf":
         params["model__n_estimators"] = min(int(params.get("model__n_estimators", 150)), 60 if rapido else 150)
     elif rapido and "model__n_estimators" in params:
         params["model__n_estimators"] = min(int(params["model__n_estimators"]), 100)
@@ -95,9 +79,13 @@ def run_ablation(X, y, idx_dev, features, dimensiones, params_modelo, rapido=Fal
     def folds(feats):
         r2, mae = [], []
         for a, b in tss.split(Xd):
-            pipe = build_pipeline(clave, feats, **params)
-            pipe.fit(Xd.iloc[a][feats], yd.iloc[a])
-            p = pipe.predict(Xd.iloc[b][feats])
+            Xa = Xd.iloc[a][feats]
+            if not Xa.notna().any().any():      # guarda para folds vacíos (h=12)
+                p = np.full(len(b), float(yd.iloc[a].median()))
+            else:
+                pipe = build_pipeline(clave, feats, **params)
+                pipe.fit(Xa, yd.iloc[a])
+                p = pipe.predict(Xd.iloc[b][feats])
             r2.append(r2_score(yd.iloc[b], p))
             mae.append(mean_absolute_error(yd.iloc[b], p))
         return np.array(r2), np.array(mae)
@@ -112,7 +100,7 @@ def run_ablation(X, y, idx_dev, features, dimensiones, params_modelo, rapido=Fal
 
         p_sin = [_wilcoxon_mayor(comp_r2, sin[k][0]) for k in claves]
         p_sin_h = _holm(p_sin)
-        p_mae = [_wilcoxon_mayor(sin[k][1], comp_mae) for k in claves]   # sin-dim peor => MAE mayor
+        p_mae = [_wilcoxon_mayor(sin[k][1], comp_mae) for k in claves]
         p_mae_h = _holm(p_mae)
         p_inc = [_wilcoxon_mayor(inc[k][0], solo[X4][0]) for k in inc]
         p_inc_h = _holm(p_inc)
@@ -140,9 +128,6 @@ def run_ablation(X, y, idx_dev, features, dimensiones, params_modelo, rapido=Fal
                          "Significativa_MAE": "Sí" if p_mae_h[i] < ALPHA else "No"})
             filas.append(fila)
 
-            # --- print seguro para cp1252 / consolas Windows ---
-            # Nota: los NOMBRES de columnas del CSV se conservan (Diferencia_R2, ...),
-            # solo se cambian los caracteres del texto impreso (Δ -> DeltaR2, ² -> R2).
             print(
                 f"[Hipotesis{sufijo}] Sin {k}: R2={sin[k][0].mean():.4f} | "
                 f"DeltaR2={fila['Diferencia_R2']:+.4f} | p_Holm={p_sin_h[i]:.4f} | "
@@ -155,4 +140,6 @@ def run_ablation(X, y, idx_dev, features, dimensiones, params_modelo, rapido=Fal
         tracking.metrics({f"r2_completo_cv{sufijo}": comp_r2.mean()})
         tracking.artifact(os.path.join(OUT_TAB, archivo))
     return {"tabla": tabla, "completo": comp_r2, "n_splits": n_splits, "clave": clave, "archivo": archivo,
-            "folds": {"completo": comp_r2.tolist(), **{f"sin_{k}": v[0].tolist() for k, v in sin.items()}}}
+            "folds": {"completo": comp_r2.tolist(), **{f"sin_{k}": v[0].tolist() for k, v in sin.items()}},
+            "folds_mae": {"completo": comp_mae.tolist(),                       # <- NUEVO
+                          **{f"sin_{k}": v[1].tolist() for k, v in sin.items()}}}  # <- NUEVO

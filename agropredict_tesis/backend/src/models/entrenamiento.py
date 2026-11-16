@@ -45,7 +45,9 @@ def entrenar_y_comparar(X, y, idx_tr, idx_va, idx_te, features, catalogo, info_s
         tss = MesesExpansivo(np.asarray(mes_idx)[idx_tr], n_splits=n_spl, gap=gap)
         esquema_cv = f"MesesExpansivo (meses completos, brecha={gap} m)"
     print(f"[Fase 6] Esquema de CV del tuning: {esquema_cv}")
-
+    splits_cv = [(a, b) for a, b in tss.split(Xtr) if len(a) > 0 and len(b) > 0]
+    n_spl = len(splits_cv)
+    print(f"[Fase 6] Folds válidos del tuning: {n_spl}")
     modelos, mejores_params, cv_mae, r2_folds = {}, {}, {}, {}
     with tracking.run("02_tuning_y_comparacion"):
         for clave in ["lr", "rf", "xgb", "lgbm", "lgbm_res"]:
@@ -56,7 +58,7 @@ def entrenar_y_comparar(X, y, idx_tr, idx_va, idx_te, features, catalogo, info_s
                 cv_mae[clave] = np.nan
             else:
                 print(f"[Fase 6] Tuning {NOMBRES[clave]} ({n_iter} combinaciones x {n_spl} folds temporales)...")
-                bs = RandomizedSearchCV(pipe, espacio_busqueda(clave), n_iter=n_iter, cv=tss,
+                bs = RandomizedSearchCV(pipe, espacio_busqueda(clave), n_iter=n_iter, cv=splits_cv,
                                         scoring="neg_mean_absolute_error", random_state=RANDOM_STATE,
                                         n_jobs=1, refit=True)
                 bs.fit(Xtr, ytr)

@@ -156,3 +156,61 @@ def sensibilidad(path, params_res=None, rapido=False):
     t.to_csv(os.path.join(OUT_TAB, "tabla_sensibilidad_depuracion.csv"), index=False)
     print(t.round(4).to_string(index=False))
     return t
+def periodicidad_x2(path):
+    """
+    Obs. 8: verifica si X2 (SIEMBRA, COSECHA, PRODUCCION) cambia mes a mes o solo una vez al año.
+    Genera un CSV con el porcentaje de series que cambian en cada diferencia mensual.
+    """
+    raw = pd.read_csv(path, low_memory=False)
+    raw["PROVINCIA"] = raw["PROVINCIA"].astype(str).str.strip().str.upper()
+    raw = raw[raw["PROVINCIA"].isin(PROVINCIAS_PIURA)].copy()
+    
+    # Extraer mes real (como en data_loader)
+    mes = pd.to_numeric(raw["MES"], errors="coerce")
+    raw["MES_NUM"] = np.where(mes > 12, mes % 100, mes)
+    raw["PERIODO"] = raw["ANO"] * 100 + raw["MES_NUM"]
+    raw["MES_IDX"] = raw["ANO"] * 12 + raw["MES_NUM"] - 1
+
+    # Agrupar por serie (Cultivo, Provincia, Distrito)
+    series = raw.groupby(['CULTIVO', 'PROVINCIA', 'DISTRITO'])
+    
+    resultados = []
+    for nombre, g in series:
+        g = g.sort_values("MES_IDX")
+        if len(g) < 2:
+            continue
+        # Calcular diferencia de meses entre registros
+        dif_meses = g["MES_IDX"].diff().dropna()
+        # Verificar si los valores de X2 cambian respecto al registro anterior
+        cambio_x2 = g[["SIEMBRA", "COSECHA", "PRODUCCION"]].diff().abs().sum(axis=1) > 0
+        
+        for i in range(1, len(g)):
+            resultados.append({
+                "CULTIVO": nombre[0],
+                "DIF_MESES": int(dif_meses.iloc[i-1]),
+                "CAMBIO_X2": int(cambio_x2.iloc[i-1])
+            })
+    
+    if not resultados:
+        print("[Obs.8] No hay suficientes registros para calcular la periodicidad.")
+        return
+
+    df_res = pd.DataFrame(resultados)
+    
+    # Agrupar por diferencia de meses (1 mes, 2 meses, 12 meses, etc.)
+    resumen = df_res.groupby("DIF_MESES").agg(
+        n_pares=("CAMBIO_X2", "size"),
+        pct_cambia_x2=("CAMBIO_X2", lambda x: (x.sum() / len(x)) * 100)
+    ).reset_index()
+    
+    # Filtrar solo las diferencias que ocurren (n_pares > 0) y ordenar
+    resumen = resumen[resumen["n_pares"] > 0].sort_values("DIF_MESES")
+    
+    # Redondear para presentación
+    resumen["pct_cambia_x2"] = resumen["pct_cambia_x2"].round(1)
+    resumen["n_pares"] = resumen["n_pares"].astype(int)
+    
+    resumen.to_csv(os.path.join(OUT_TAB, "tabla_periodicidad_x2.csv"), index=False)
+    print("[Obs.8] Periodicidad de X2 (por diferencia de meses):")
+    print(resumen.to_string(index=False))
+    return resumen

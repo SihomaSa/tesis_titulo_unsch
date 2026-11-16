@@ -178,7 +178,7 @@ def _plot_comparacion_holdout(metrics_rf, metrics_lgbm):
 
 def _color_de(var, dimensiones):
     key_map = {"X1_Temporal": "x1_temporal", "X2_Productiva": "x2_productiva",
-               "X3_Geografica": "x3_geografica", "X4_Economica_Historica": "x4_economica"}
+               "X3_Espacial_Producto": "X3_Espacial_Producto", "X4_Economica_Historica": "x4_economica"}
     for dim, feats in dimensiones.items():
         if var in feats:
             return COLORES[key_map[dim]]

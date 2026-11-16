@@ -159,7 +159,7 @@ def importancia_comparada(interp, abl, dimensiones, contrib_final=None, esquema_
                           nombre_modelo_ablacion="LightGBM (directo)", nombre_modelo_final="LightGBM sobre persistencia"):
     """Cada columna declara con QUÉ modelo y en QUÉ muestra se calculó.
     contrib_final: DataFrame de tabla_contribucion_dimensiones_prueba_lgbm_res (aporte en prueba sobre el MODELO FINAL,
-    el comparable con ganancia/SHAP/permutación). X3_Geografica queda NaN allí porque el modelo final separa X3a/X3b."""
+    el comparable con ganancia/SHAP/permutación). X3_Espacial_Producto queda NaN allí porque el modelo final separa X3a/X3b."""
     ab = abl["tabla"].set_index("Dimension")
     perm = interp["permutacion"].set_index("Dimension")
     cf = None if contrib_final is None else contrib_final.set_index("Dimension")

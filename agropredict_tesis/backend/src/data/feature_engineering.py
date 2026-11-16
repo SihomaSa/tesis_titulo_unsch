@@ -4,6 +4,7 @@ feature_engineering.py — FASE 3: ingeniería de características por dimensió
   horizonte=None : comportamiento anterior ("siguiente observación disponible").
   horizonte=h    : v2. El objetivo es el precio del mes T y TODAS las variables dependientes de la
                    serie (X2, X4) se calculan con información de meses <= T-h (origen del pronóstico).
+                   Si X2_MODO="inmediata", X2 usa la observación inmediatamente anterior sin restricción de T-h.
 Los faltantes los trata el Pipeline de scikit-learn (fit solo con entrenamiento).
 """
 import json
@@ -76,7 +77,9 @@ def _x4_x2_horizonte(df, h):
     # --- X2: se conserva la versión contemporánea (*_ACT) solo como cota superior
     for c in X2C:
         df[c + "_ACT"] = df[c]
+
     if X2_MODO == "rezagada":
+        # Variante principal: último dato con mes <= T - h
         izq2 = izq.copy()
         izq2["ORIGEN_X2"] = izq2["MES_IDX"] - h - X2_REZAGO_EXTRA_MESES
         der2 = base[SERIE + ["MES_IDX"] + X2C].rename(
@@ -87,6 +90,26 @@ def _x4_x2_horizonte(df, h):
                       on=SERIE + ["MES_IDX"], how="left")
         for c in X2C:
             df[c] = df[c + "_LAG"]        # las columnas X2 pasan a contener solo información del origen
+
+    elif X2_MODO == "inmediata":
+        # Variante de sensibilidad: observación inmediatamente anterior sin restricción de T-h
+        # (permite T-1 o T-2, lo que en producción sería fuga, pero es prueba de estrés)
+        izq2 = izq.copy()
+        izq2["ORIGEN_X2"] = izq2["MES_IDX"] - 1  # Solo restamos 1 mes para evitar usar el mes objetivo exacto
+        der2 = base[SERIE + ["MES_IDX"] + X2C].rename(
+            columns={"MES_IDX": "MES_ULT_X2", **{c: c + "_LAG" for c in X2C}})
+        m2 = pd.merge_asof(izq2.sort_values("ORIGEN_X2"), der2.sort_values("MES_ULT_X2"),
+                           left_on="ORIGEN_X2", right_on="MES_ULT_X2", by=SERIE, direction="backward")
+        df = df.merge(m2[SERIE + ["MES_IDX", "MES_ULT_X2"] + [c + "_LAG" for c in X2C]],
+                      on=SERIE + ["MES_IDX"], how="left")
+        for c in X2C:
+            df[c] = df[c + "_LAG"]
+
+    elif X2_MODO == "sin_x2":
+        # Variante extrema: eliminar X2 (se maneja en la selección de features, pero aquí la vaciamos)
+        for c in X2C:
+            df[c] = np.nan
+
     df["HORIZONTE"] = h
     return df
 
@@ -134,7 +157,11 @@ def build_features(df: pd.DataFrame, guardar_catalogo: bool = True, horizonte=No
             ok2 = df["MES_ULT_X2"].notna()
             assert ((df.loc[ok2, "MES_IDX"] - df.loc[ok2, "MES_ULT_X2"]) >= h + X2_REZAGO_EXTRA_MESES).all(), \
                 "FUGA: X2 usa información posterior al origen"
-        print(f"[Fase 3] Horizonte h={h} mes(es): X2 {X2_MODO}; prueba anti-fuga superada.")
+        elif X2_MODO == "inmediata":
+            ok2 = df["MES_ULT_X2"].notna()
+            assert ((df.loc[ok2, "MES_IDX"] - df.loc[ok2, "MES_ULT_X2"]) >= 1).all(), \
+                "FUGA: X2 de la variante inmediata usó el mismo mes objetivo"
+        print(f"[Fase 3] Horizonte h={h} mes(es): X2 modo='{X2_MODO}'; prueba anti-fuga superada.")
     print(f"[Fase 3] {len(features)} variables; sin historial previo: {(df['TIENE_HISTORIAL'] == 0).mean() * 100:.1f}% "
           f"| |corr| máx. con el objetivo = {corr_max:.3f}")
 

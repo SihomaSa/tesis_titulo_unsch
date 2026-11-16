@@ -149,7 +149,7 @@
 -
 -    L.append("### 4.3.2. Hipótesis específicas\n")
      nombres_h = {"X1_Temporal": "H1 — Dimensión temporal", "X2_Productiva": "H2 — Dimensión productiva",
-                  "X3_Geografica": "H3 — Dimensión geográfica", "X4_Economica_Historica": "H4 — Dimensión económica histórica"}
+                  "X3_Espacial_Producto": "H3 — Dimensión geográfica", "X4_Economica_Historica": "H4 — Dimensión económica histórica"}
 -    for k in claves:
 -        r = ab.loc[k]
 -        es_sig = r["p_holm"] < ALPHA

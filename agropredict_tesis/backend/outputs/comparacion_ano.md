@@ -10,5 +10,5 @@ Sensibilidad (con ANO, 17 var.) 0.7384 0.4966 1.0155                       5.871
 Dimension                                                                         
 X1_Temporal                  -0.0032          1.0000        0.0006          0.8457
 X2_Productiva                -0.0017          1.0000       -0.0002          0.8457
-X3_Geografica                 0.0540          0.0059        0.0567          0.0039
+X3_Espacial_Producto                 0.0540          0.0059        0.0567          0.0039
 X4_Economica_Historica        0.0462          0.0039        0.0449          0.0039

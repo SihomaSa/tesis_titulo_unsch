@@ -19,7 +19,7 @@ from src.reporting import texto_robustez as rb
 N = lambda v, d=4: f"{v:.{d}f}"
 P = lambda v: ("<0.001" if v < 0.001 else f"{v:.3f}")
 MILES = lambda n: f"{int(n):,}".replace(",", " ")
-BONITO = {"X1_Temporal": "temporal", "X2_Productiva": "productiva", "X3_Geografica": "geográfica", "X4_Economica_Historica": "económica histórica"}
+BONITO = {"X1_Temporal": "temporal", "X2_Productiva": "productiva", "X3_Espacial_Producto": "geográfica", "X4_Economica_Historica": "económica histórica"}
 MES = lambda p: f"{str(int(p))[:4]}-{str(int(p))[4:]}"
 
 
@@ -189,7 +189,7 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
     for d in MATRIZ_CONSISTENCIA["dimensiones"]:
         vs = dimensiones[d["clave"]]
         filas_c.append([d["codigo"], d["nombre"], len(vs), ", ".join(vs)])
-        if d["clave"] == "X3_Geografica":
+        if d["clave"] == "X3_Espacial_Producto":
             filas_c.append(["X3a", "↳ Territorio (subconjunto de X3)", 2, "PROVINCIA_enc, DISTRITO_enc"])
             filas_c.append(["X3b", "↳ Producto (subconjunto de X3)", 1, "CULTIVO_enc"])
     tv = pd.DataFrame(filas_c, columns=["Dimensión", "Nombre", "N.º", "Variables"])
