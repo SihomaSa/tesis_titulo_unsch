@@ -347,28 +347,11 @@ def generar_texto(df, embudo, info_split, res, abl, interp, t_prov, t_seg, anom,
     ruta_docx = os.path.join(OUT_TXT, "texto_resultados_y_conclusiones.docx")
     _a_docx(md, ruta_docx)
 
-    reporte = {
-        "n_registros_validos": n_final, "modelo_seleccionado": nom, "n_splits_ablation": abl["n_splits"],
-        "modelo_final": {"r2_final": m["R2"], "mae_final": m["MAE"], "rmse_final": m["RMSE"], "mape_final": m["MAPE"]},
-        "hipotesis_general": {
-            "texto": MATRIZ_CONSISTENCIA["hipotesis_general"],
-            "estado_vs_umbral_OFICIAL": "ACEPTADA" if cumple else "RECHAZADA",
-            "evidencia": f"R² en prueba = {m['R2']:.4f} (umbral oficial = {UMBRAL_R2_OFICIAL}); MAE persistencia = {base['MAE']:.4f} vs modelo = {m['MAE']:.4f}",
-        },
-        "hipotesis_especificas": [{
-            "codigo": d["codigo"], "texto": d["hipotesis_especifica"],
-            "R2_sin_dimension": float(ab.loc[d["clave"], "R2_sin_dim"]),
-            "diferencia_R2": float(ab.loc[d["clave"], "Diferencia_R2"]),
-            "p_valor": float(ab.loc[d["clave"], "p_holm"]),
-            "significativa_wilcoxon": "Sí" if ab.loc[d["clave"], "p_holm"] < ALPHA else "No",
-            "importancia_gini_dimension": float(imp_dim[d["clave"]]),
-            "estado_consistencia": (clasif or {}).get(d["clave"], {}).get("estado", "no evaluado (corrida sin extras)"),
-        } for d in MATRIZ_CONSISTENCIA["dimensiones"]],
-    }
-    import json
-    with open(os.path.join(os.path.dirname(OUT_TXT), "tables", "reporte_contrastacion_hipotesis.json"), "w", encoding="utf-8") as f:
-        json.dump(reporte, f, ensure_ascii=False, indent=2)
-
+    from src.reporting.reporte_json import construir_reporte, guardar_reporte
+    reporte = construir_reporte(T=T, nom=nom, m=m, base=base, mm3=mm3, n_final=n_final,
+                                n_test=sp["n_test"], h_act=h_act, n_splits=abl["n_splits"],
+                                imp_dim=imp_dim, shp=shp, clasif=clasif, ab=ab)
+    guardar_reporte(reporte, os.path.join(os.path.dirname(OUT_TXT), "tables", "reporte_contrastacion_hipotesis.json"))
     # ------------------------------------------------------------------ guía de sustentación
     if h_act is not None:
         resp_horizonte = (f"El precio del mes T con un horizonte fijo de h = {h_act} meses: todas las variables de la serie y de X2 usan solo información con mes ≤ T − {h_act}. "

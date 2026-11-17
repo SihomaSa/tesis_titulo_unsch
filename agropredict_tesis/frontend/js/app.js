@@ -1,462 +1,64 @@
-// app.js — lógica del dashboard AgroPredict.
-// Consume la API FastAPI y pinta la Matriz de Consistencia, resultados del
-// Capítulo 4 (con métricas de ΔMAE y ΔR²) y el formulario de predicción.
-const API_BASE_URL = String(window.API_BASE_URL ?? "http://localhost:8000").replace(/\/$/, "");
+// ---------------- Reporte de hipótesis ----------------
+const num = (v) => (v === null || v === undefined || v === "" ? null : (Number.isFinite(Number(v)) ? Number(v) : null));
 
-// Umbrales de R² (espejo de src/config.py)
-const UMBRAL_OFICIAL = 0.85;
-let N_SPLITS_TSS = 10; // se actualiza con el valor real del reporte
-
-// Colores por dimensión
-const DIM_COLORS = { X1: "#1A5276", X2: "#1B6B4A", X3: "#C4960A", X4: "#C0392B" };
-const DIM_NOMBRES = {
-  X1_Temporal: "X1 Temporal",
-  X2_Productiva: "X2 Productiva",
-  X3_Espacial_Producto: "X3 Espacial y de producto",
-  X4_Economica_Historica: "X4 Económica Histórica",
-};
-
-const COLUMN_LABELS = {
-  Modelo: "Modelo",
-  R2: "R² (prueba)",
-  MAE: "MAE (S/ por kg)",
-  RMSE: "RMSE (S/ por kg)",
-  MAPE: "MAPE (%)",
-  p_holm: "p-valor (Holm)",
-  Dimension: "Dimensión",
-  R2_sin_dim: "R² sin la dimensión",
-  R2_completo: "R² modelo completo",
-  Diferencia_R2: "ΔR² (complementario)",
-  Diferencia_MAE: "ΔMAE (principal)",
-  p_mae_holm: "p-valor (Holm)",
-  Significativa_estadistica: "Significativa",
-};
-
-// Distritos disponibles por provincia (para el filtro dinámico del <select>)
-const DISTRITOS_POR_PROVINCIA = {
-  PIURA:       ["PIURA", "CASTILLA", "CATACAOS", "CURA MORI", "EL TALLAN", "LA ARENA", "LA UNION", "LAS LOMAS", "TAMBO GRANDE"],
-  AYABACA:     ["AYABACA", "FRIAS", "JILILI", "LAGUNAS", "MONTERO", "PACAIPAMPA", "PAIMAS", "SAPILLICA", "SICCHEZ", "SUYO"],
-  HUANCABAMBA: ["HUANCABAMBA", "CANCHAQUE", "EL CARMEN DE LA FRONTERA", "HUARMACA", "LALAQUIZ", "SAN MIGUEL DE EL FAIQUE", "SONDOR", "SONDORILLO"],
-  MORROPON:    ["CHULUCANAS", "BUENOS AIRES", "CHALACO", "LA MATANZA", "MORROPON", "SALITRAL", "SAN JUAN DE BIGOTE", "SANTA CATALINA DE MOSSA", "SANTO DOMINGO", "YAMANGO"],
-  PAITA:       ["AMOTAPE", "ARENAL", "COLAN", "LA HUACA", "TAMARINDO", "VICHAYAL"],
-  SULLANA:     ["SULLANA", "IGNACIO ESCUDERO", "MARCAVELICA", "MIGUEL CHECA", "QUERECOTILLO", "SALITRAL"],
-  SECHURA:     ["SECHURA", "BELLAVISTA DE LA UNION", "BERNAL", "CRISTO NOS VALGA", "RINCONADA LLICUAR", "VICE"],
-  TALARA:      ["PARIÑAS", "EL ALTO", "LA BREA", "LOBITOS", "LOS ORGANOS", "MANCORA"],
-};
-
-const charts = {};
-
-document.addEventListener("DOMContentLoaded", () => {
-  setupTabs();
-  setupFigures();
-  setupChartDefaults();
-  loadConsistencyMatrix();
-  loadModelComparison();
-  loadAblation();
-  loadHypothesisReport();
-  setupPredictForm();
-  setupFiltroProvinciaDistrito();
-});
-
-// ---------------- Utilidades ----------------
-const $ = (id) => document.getElementById(id);
-const isNum = (v) => typeof v === "number" && Number.isFinite(v);
-
-function esc(v) {
-  return String(v ?? "").replace(/[&<>"']/g, (c) => (
-    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
-  ));
-}
-
-function fmt(v, dec = 4) {
-  const n = typeof v === "string" && v.trim() !== "" ? Number(v) : v;
-  return isNum(n) ? n.toFixed(dec) : "—";
-}
-
-function fmtSigned(v, dec = 4) {
-  if (!isNum(v)) return "—";
-  const s = Math.abs(v).toFixed(dec);
-  if (Number(s) === 0) return s;
-  return (v < 0 ? "−" : "+") + s;
-}
-
-function fmtPct(v, dec = 2) {
-  return isNum(v) ? `${(v * 100).toFixed(dec)}%` : "—";
-}
-
-function esSi(v) {
-  return v === true || /^(s[ií]|true|yes|1)$/i.test(String(v ?? "").trim());
-}
-
-async function fetchJSON(path) {
-  const res = await fetch(`${API_BASE_URL}${path}`);
-  if (!res.ok) throw new Error(`${path} -> ${res.status}`);
-  return res.json();
-}
-
-function showFetchError(elId, mensaje) {
-  const el = $(elId);
-  if (el) el.textContent = mensaje;
-}
-
-function buscarValorPorPatron(obj, patron) {
-  if (!obj) return undefined;
-  const clave = Object.keys(obj).find((k) => patron.test(k));
-  return clave !== undefined ? obj[clave] : undefined;
-}
-
-// ACTUALIZADO: maneja los 3 estados de la tesis (Respaldada, Parcial, No respaldada)
-function normalizarEstado(v) {
+function estadoHip(v) {
   if (v === undefined || v === null || v === "") return null;
   const s = String(v).trim().toUpperCase();
-  if (s.startsWith("ACEPT") || s.startsWith("RESPALD") && !s.includes("PARCIAL") && !s.includes("NO")) return "RESPALDADA";
-  if (s.startsWith("PARCIAL")) return "PARCIALMENTE RESPALDADA";
-  if (s.startsWith("RECHAZ") || s.startsWith("NO RESPALD")) return "NO RESPALDADA";
+  if (s.includes("CONCLUY")) return "NO CONCLUYENTE";
+  if (s.includes("PARCIAL")) return "PARCIALMENTE RESPALDADA";
+  if (s.startsWith("NO ") || s.startsWith("RECHAZ")) return "NO RESPALDADA";
+  if (s.startsWith("RESPALD") || s.startsWith("ACEPT")) return "RESPALDADA";
   return null;
 }
 
-function dimNumero(codigo, i) {
-  const m = String(codigo ?? "").match(/[1-4]/);
-  return m ? m[0] : String(Math.min(i + 1, 4));
-}
-
-function titleCase(str) {
-  return String(str)
-    .toLowerCase()
-    .replace(/(^|\s|\(|\/)([a-záéíóúñ])/g, (_, sep, ch) => sep + ch.toUpperCase());
-}
-
-// ---------------- Tabs ----------------
-function setupTabs() {
-  const btns = Array.from(document.querySelectorAll(".tab-btn"));
-
-  function activate(id, { focus = false, updateHash = true } = {}) {
-    const btn = btns.find((b) => b.dataset.tab === id) || btns[0];
-    btns.forEach((b) => {
-      const on = b === btn;
-      b.classList.toggle("active", on);
-      b.setAttribute("aria-selected", on ? "true" : "false");
-      b.tabIndex = on ? 0 : -1;
-    });
-    document.querySelectorAll(".tab-content").forEach((c) => {
-      const on = c.id === btn.dataset.tab;
-      c.classList.toggle("active", on);
-      c.hidden = !on;
-    });
-    if (focus) btn.focus();
-    if (updateHash) history.replaceState(null, "", `#${btn.dataset.tab}`);
-    Object.values(charts).forEach((c) => c.resize());
-  }
-
-  btns.forEach((btn, i) => {
-    btn.addEventListener("click", () => activate(btn.dataset.tab));
-    btn.addEventListener("keydown", (ev) => {
-      const last = btns.length - 1;
-      let next = null;
-      if (ev.key === "ArrowRight") next = i === last ? 0 : i + 1;
-      else if (ev.key === "ArrowLeft") next = i === 0 ? last : i - 1;
-      else if (ev.key === "Home") next = 0;
-      else if (ev.key === "End") next = last;
-      if (next !== null) {
-        ev.preventDefault();
-        activate(btns[next].dataset.tab, { focus: true });
-      }
-    });
-  });
-
-  const inicial = location.hash.replace("#", "");
-  if (btns.some((b) => b.dataset.tab === inicial)) activate(inicial, { updateHash: false });
-}
-
-// ---------------- Figuras del pipeline ----------------
-function setupFigures() {
-  document.querySelectorAll(".figures-grid figure").forEach((fig) => {
-    const img = fig.querySelector("img");
-    if (!img) return;
-    const marcarFaltante = () => {
-      if (fig.classList.contains("is-missing")) return;
-      fig.classList.add("is-missing");
-      const aviso = document.createElement("div");
-      aviso.className = "fig-missing";
-      aviso.innerHTML =
-        `No se encontró la imagen <code>${esc(img.getAttribute("src"))}</code>.<br />` +
-        "Descárgala desde la carpeta de outputs y guárdala en esa ruta.";
-      fig.insertBefore(aviso, img);
-    };
-    img.addEventListener("error", marcarFaltante);
-    if (img.complete && img.naturalWidth === 0 && img.getAttribute("src")) marcarFaltante();
-  });
-}
-
-// ---------------- Chart.js ----------------
-function setupChartDefaults() {
-  if (typeof Chart === "undefined") return;
-  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
-  Chart.defaults.font.size = 12;
-  Chart.defaults.color = "#57655C";
-}
-
-const referenceLine = {
-  id: "referenceLine",
-  afterDatasetsDraw(chart, _args, opts) {
-    if (!opts || !isNum(opts.value)) return;
-    const { ctx, chartArea, scales } = chart;
-    const x = scales.x.getPixelForValue(opts.value);
-    if (x < chartArea.left || x > chartArea.right) return;
-    ctx.save();
-    ctx.setLineDash([5, 4]);
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = "#1C2621";
-    ctx.beginPath();
-    ctx.moveTo(x, chartArea.top - 6);
-    ctx.lineTo(x, chartArea.bottom);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = "#1C2621";
-    ctx.font = `600 11px ${Chart.defaults.font.family}`;
-    ctx.textBaseline = "bottom";
-    ctx.textAlign = opts.align || "center";
-    const dx = opts.align === "right" ? -6 : opts.align === "left" ? 6 : 0;
-    ctx.fillText(opts.label || "", x + dx, chartArea.top - 8);
-    ctx.restore();
-  },
-};
-
-const valueLabels = {
-  id: "valueLabels",
-  afterDatasetsDraw(chart) {
-    const { ctx } = chart;
-    const ds = chart.data.datasets[0];
-    ctx.save();
-    ctx.font = `600 12px ${Chart.defaults.font.family}`;
-    ctx.fillStyle = "#1C2621";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    chart.getDatasetMeta(0).data.forEach((bar, i) => {
-      ctx.fillText(fmt(ds.data[i]), bar.x + 8, bar.y);
-    });
-    ctx.restore();
-  },
-};
-
-function opcionesBarrasHorizontales(refOpts) {
-  return {
-    indexAxis: "y",
-    responsive: true,
-    maintainAspectRatio: false,
-    layout: { padding: { top: 26, right: 52 } },
-    scales: {
-      x: { min: 0, max: 1, grid: { color: "#E9ECE8" }, border: { display: false }, ticks: { stepSize: 0.2 } },
-      y: { grid: { display: false }, ticks: { color: "#1C2621", font: { size: 12.5 } } },
-    },
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.parsed.x)}` },
-      },
-      referenceLine: refOpts,
-    },
-  };
-}
-
-function colorModelo(nombre, i) {
-  const n = String(nombre).toLowerCase();
-  if (n.includes("random")) return "#1B6B4A";
-  if (n.includes("xgb")) return "#C0392B";
-  if (n.includes("lightgbm") || n.includes("lgbm")) return "#7D3C98";
-  if (n.includes("lineal") || n.includes("linear")) return "#1A5276";
-  return ["#1B6B4A", "#C0392B", "#7D3C98", "#1A5276", "#C4960A"][i % 5];
-}
-
-function mostrarErrorGrafico(wrap, mensaje) {
-  wrap.classList.remove("is-loading");
-  wrap.innerHTML = `<p class="result-error">${esc(mensaje)}</p>`;
-}
-
-// ---------------- Matriz de consistencia ----------------
-async function loadConsistencyMatrix() {
-  try {
-    const m = await fetchJSON("/api/consistency-matrix");
-    showFetchError("pg-text", m.problema_general ?? "—");
-    showFetchError("og-text", m.objetivo_general ?? "—");
-    showFetchError("hg-text", m.hipotesis_general ?? "—");
-
-    const dims = Array.isArray(m.dimensiones) ? m.dimensiones : [];
-    $("dimensiones-grid").innerHTML = dims.map((d, i) => {
-      const n = dimNumero(d.codigo, i);
-      const vars = (d.variables || []).map((v) => `<li>${esc(v)}</li>`).join("");
-      return `
-        <article class="dim-card dim-x${n}">
-          <header class="dim-head">
-            <h3>${esc(d.nombre)}</h3>
-            <span class="dim-index">${esc(d.codigo)}</span>
-          </header>
-          <dl class="dim-fields">
-            <div><dt>Problema</dt><dd>${esc(d.problema_especifico)}</dd></div>
-            <div><dt>Objetivo</dt><dd>${esc(d.objetivo_especifico)}</dd></div>
-          </dl>
-          <div class="dim-vars">
-            <span class="dim-vars-title">Variables</span>
-            <ul class="chips">${vars}</ul>
-          </div>
-        </article>`;
-    }).join("");
-  } catch (e) {
-    console.error("No se pudo cargar la matriz de consistencia:", e);
-    ["pg-text", "og-text", "hg-text"].forEach((id) =>
-      showFetchError(id, "No se pudo conectar con la API. Verifica que el backend esté activo.")
-    );
-    $("dimensiones-grid").innerHTML = "";
-  }
-}
-
-// ---------------- Comparación de modelos ----------------
-async function loadModelComparison() {
-  const wrap = $("chart-modelos-wrap");
-  try {
-    const rows = await fetchJSON("/api/results/model-comparison");
-    wrap.classList.remove("is-loading");
-    if (!rows.length) {
-      mostrarErrorGrafico(wrap, "Aún no hay resultados. Corre main.py en el backend.");
-      return;
-    }
-
-    const mejor = Math.max(...rows.map((r) => Number(r.R2)));
-    renderTable("tabla-modelos", rows, {
-      mejorFila: (r) => Number(r.R2) === mejor,
-      celda: (col, r, i) =>
-        col === "Modelo"
-          ? `<span class="dot" style="background:${colorModelo(r.Modelo, i)}"></span>${esc(r.Modelo)}` +
-            (Number(r.R2) === mejor ? '<span class="badge best">Mayor R²</span>' : "")
-          : null,
-    });
-
-    if (typeof Chart === "undefined") {
-      mostrarErrorGrafico(wrap, "No se pudo cargar Chart.js (revisa tu conexión a internet).");
-      return;
-    }
-    charts.modelos = new Chart($("chart-modelos"), {
-      type: "bar",
-      data: {
-        labels: rows.map((r) => r.Modelo),
-        datasets: [{
-          label: "R² (conjunto de prueba)",
-          data: rows.map((r) => Number(r.R2)),
-          backgroundColor: rows.map((r, i) => colorModelo(r.Modelo, i)),
-          borderRadius: 4,
-          maxBarThickness: 34,
-        }],
-      },
-      options: opcionesBarrasHorizontales({ value: UMBRAL_OFICIAL, label: `Umbral ${UMBRAL_OFICIAL}`, align: "center" }),
-      plugins: [referenceLine, valueLabels],
-    });
-  } catch (e) {
-    console.error("No se pudo cargar la comparación de modelos:", e);
-    mostrarErrorGrafico(wrap, "No se pudo cargar el gráfico. Verifica la conexión con la API.");
-  }
-}
-
-// ---------------- Ablation study ----------------
-async function loadAblation() {
-  const wrap = $("chart-ablation-wrap");
-  try {
-    const rows = await fetchJSON("/api/results/ablation");
-    wrap.classList.remove("is-loading");
-    if (!rows.length) {
-      mostrarErrorGrafico(wrap, "Aún no hay resultados. Corre main.py en el backend.");
-      return;
-    }
-
-    renderTable("tabla-ablation", rows, {
-      celda: (col, r) => {
-        if (col === "Dimension") {
-          const c = DIM_COLORS[String(r.Dimension).slice(0, 2)] || "#57655C";
-          return `<span class="dot" style="background:${c}"></span>${esc(DIM_NOMBRES[r.Dimension] || String(r.Dimension).replace(/_/g, " "))}`;
-        }
-        if (col === "Significativa_estadistica") {
-          const si = esSi(r[col]);
-          return `<span class="badge ${si ? "yes" : "no"}">${si ? "Sí" : "No"}</span>`;
-        }
-        // Rellena las diferencias positivas/negativas
-        if (col === "Diferencia_R2" || col === "Diferencia_MAE") {
-          const v = Number(r[col]);
-          const cls = !isNum(v) || Math.abs(v) < 0.00005 ? "" : v < 0 ? "neg" : "pos";
-          return `<span class="${cls}">${fmtSigned(v)}</span>`;
-        }
-        return null;
-      },
-    });
-
-    if (typeof Chart === "undefined") {
-      mostrarErrorGrafico(wrap, "No se pudo cargar Chart.js (revisa tu conexión a internet).");
-      return;
-    }
-    const completo = Number(rows[0].R2_completo);
-    charts.ablation = new Chart($("chart-ablation"), {
-      type: "bar",
-      data: {
-        labels: rows.map((r) => DIM_NOMBRES[r.Dimension] || String(r.Dimension).replace(/_/g, " ")),
-        datasets: [{
-          label: "R² al excluir la dimensión",
-          data: rows.map((r) => Number(r.R2_sin_dim)),
-          backgroundColor: rows.map((r) => DIM_COLORS[String(r.Dimension).slice(0, 2)] || "#57655C"),
-          borderRadius: 4,
-          maxBarThickness: 34,
-        }],
-      },
-      options: opcionesBarrasHorizontales({ value: completo, label: `Modelo completo ${fmt(completo)}`, align: "right" }),
-      plugins: [referenceLine, valueLabels],
-    });
-  } catch (e) {
-    console.error("No se pudo cargar el ablation study:", e);
-    mostrarErrorGrafico(wrap, "No se pudo cargar el gráfico. Verifica la conexión con la API.");
-  }
-}
-
-// ---------------- Reporte de hipótesis ----------------
-function extraerR2(modeloFinal, evidencia) {
-  const directo = Number(modeloFinal?.r2_final);
-  if (isNum(directo)) return directo;
-  const m = String(evidencia ?? "").match(/=\s*(\d+(?:[.,]\d+)?)/);
-  return m ? parseFloat(m[1].replace(",", ".")) : null;
-}
-
-// ACTUALIZADO: chips para los 3 estados
 function chipEstado(estado) {
-  if (estado === "RESPALDADA" || estado === "ACEPTADA") return '<span class="chip ok">Respaldada</span>';
-  if (estado === "PARCIALMENTE RESPALDADA") return '<span class="chip warn">Parcialmente respaldada</span>';
-  if (estado === "NO RESPALDADA" || estado === "RECHAZADA") return '<span class="chip bad">No respaldada</span>';
+  const e = estadoHip(estado);
+  if (e === "RESPALDADA") return '<span class="chip ok">Respaldada</span>';
+  if (e === "PARCIALMENTE RESPALDADA") return '<span class="chip warn">Parcialmente respaldada</span>';
+  if (e === "NO RESPALDADA") return '<span class="chip bad">No respaldada</span>';
+  if (e === "NO CONCLUYENTE") return '<span class="chip na">No concluyente</span>';
   return '<span class="chip na">Sin dato</span>';
 }
 
 function renderHipotesisGeneral(r) {
   const hg = r.hipotesis_general || {};
   const mf = r.modelo_final || {};
-  const r2 = extraerR2(mf, hg.evidencia);
+  const a = hg.hg_a || {};
+  const b = hg.hg_b || {};
+  const crit = num(a.criterio_referencia) ?? UMBRAL_OFICIAL;
+  const r2 = num(mf.r2_final);
+  const ic = Array.isArray(mf.r2_ic95) ? mf.r2_ic95.map(num) : null;
+  const icOk = ic && ic[0] !== null && ic[1] !== null;
+  const icTxt = icOk ? ` · IC95 [${fmt(ic[0])}; ${fmt(ic[1])}]` : "";
 
-  const calc = (u) => (isNum(r2) ? (r2 >= u ? "RESPALDADA" : "NO RESPALDADA") : null);
-  const estadoOficial =
-    normalizarEstado(buscarValorPorPatron(hg, /oficial/i)) ??
-    normalizarEstado(buscarValorPorPatron(hg, /umbral.*0[.,]?85/i)) ??
-    calc(UMBRAL_OFICIAL);
+  const ancho = r2 !== null ? Math.max(0, Math.min(1, r2)) * 100 : 0;
+  const nivel = r2 !== null && r2 < crit ? "low" : "";
+  const banda = icOk
+    ? `<div style="position:absolute;top:0;bottom:0;left:${Math.max(0, ic[0]) * 100}%;width:${Math.max(0, (ic[1] - ic[0])) * 100}%;background:rgba(28,38,33,.28);border-radius:3px" title="IC95 del R²"></div>`
+    : "";
 
-  const ancho = isNum(r2) ? Math.max(0, Math.min(1, r2)) * 100 : 0;
-  const nivel = !isNum(r2) ? "" : r2 >= UMBRAL_OFICIAL ? "" : "low";
-
-  const track = isNum(r2) ? `
+  const track = r2 !== null ? `
     <div class="track-wrap">
       <div class="track" role="img" aria-label="R² final ${fmt(r2)} sobre una escala de 0 a 1">
         <div class="track-fill ${nivel}" style="width:${ancho}%"></div>
-        <div class="tick off" style="left:${UMBRAL_OFICIAL * 100}%"><span>${UMBRAL_OFICIAL.toFixed(2)}</span></div>
+        ${banda}
+        <div class="tick off" style="left:${crit * 100}%"><span>${crit.toFixed(2)}</span></div>
       </div>
     </div>` : "";
 
   const meta = [];
   if (r.modelo_seleccionado) meta.push(["Modelo final", esc(r.modelo_seleccionado)]);
-  if (isNum(Number(r.n_registros_validos))) meta.push(["Registros válidos", Number(r.n_registros_validos).toLocaleString("es-PE")]);
-  if (isNum(Number(mf.mae_final))) meta.push(["MAE", fmt(Number(mf.mae_final))]);
-  if (isNum(Number(mf.rmse_final))) meta.push(["RMSE", fmt(Number(mf.rmse_final))]);
-  if (isNum(Number(mf.mape_final))) meta.push(["MAPE", `${fmt(Number(mf.mape_final), 1)}%`]);
+  if (num(r.n_registros_validos) !== null) meta.push(["Registros válidos", num(r.n_registros_validos).toLocaleString("es-PE")]);
+  if (num(r.horizonte_meses) !== null) meta.push(["Horizonte", `${num(r.horizonte_meses)} meses`]);
+  if (num(mf.n_test) !== null) meta.push(["n prueba", num(mf.n_test).toLocaleString("es-PE")]);
+  if (num(mf.mae_final) !== null) meta.push(["MAE", fmt(num(mf.mae_final))]);
+  if (num(mf.rmse_final) !== null) meta.push(["RMSE", fmt(num(mf.rmse_final))]);
+  if (num(mf.mape_final) !== null) meta.push(["MAPE", `${fmt(num(mf.mape_final), 1)}%`]);
+  if (num(mf.mae_persistencia) !== null) meta.push(["MAE persistencia", fmt(num(mf.mae_persistencia))]);
+  if (num(mf.mae_media_movil) !== null) meta.push(["MAE media móvil", fmt(num(mf.mae_media_movil))]);
+
+  const pct = (v) => (num(v) === null ? "—" : `${fmt(num(v), 1)} %`);
+  const ph = (v) => (num(v) === null ? "—" : fmt(num(v), 3));
 
   $("hg-card").innerHTML = `
     <article class="verdict">
@@ -464,12 +66,13 @@ function renderHipotesisGeneral(r) {
       <div class="verdict-main">
         <div class="score">
           <span class="score-num">${fmt(r2)}</span>
-          <span class="score-label">R² en prueba (hold-out)</span>
+          <span class="score-label">R² en prueba (hold-out)${icTxt}</span>
         </div>
         ${track}
       </div>
       <ul class="verdict-status">
-        <li>${chipEstado(estadoOficial)} Umbral oficial ${UMBRAL_OFICIAL.toFixed(2)} (cap. 3)</li>
+        <li>${chipEstado(a.estado)} <b>HG-a (eficacia):</b> criterio de referencia R² ≥ ${crit.toFixed(2)} (decisión por IC95: se rechaza si el límite superior queda por debajo).</li>
+        <li>${chipEstado(b.estado)} <b>HG-b (baselines):</b> el MAE baja ${pct(b.reduccion_persistencia_pct)} frente a la persistencia (p Holm ${ph(b.p_holm_persistencia)}) y ${pct(b.reduccion_media_movil_pct)} frente a la media móvil (p Holm ${ph(b.p_holm_media_movil)}).</li>
       </ul>
       ${meta.length ? `<dl class="verdict-meta">${meta.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>` : ""}
       ${hg.evidencia ? `<p class="verdict-evidence"><b>Evidencia:</b> ${esc(hg.evidencia)}</p>` : ""}
@@ -480,27 +83,29 @@ function renderHipotesisEspecificas(r) {
   const lista = Array.isArray(r.hipotesis_especificas) ? r.hipotesis_especificas : [];
   $("he-cards").innerHTML = lista.map((h, i) => {
     const n = dimNumero(h.codigo, i);
-    
-    // Se asume que el backend manda el estado general en el texto, pero buscamos la sig. de MAE
-    const sig = esSi(h.significativa_wilcoxon) || (h.diferencia_MAE > 0 && h.p_valor < 0.05);
-    const gini = Number(h.importancia_gini_dimension);
-    const ancho = isNum(gini) ? Math.max(0, Math.min(1, gini)) * 100 : 0;
-    
-    // Cambiado a Diferencia_MAE si existe, si no a Diferencia_R2
-    const difVal = h.diferencia_MAE !== undefined ? h.diferencia_MAE : h.diferencia_R2;
-    const nombreDif = h.diferencia_MAE !== undefined ? "ΔMAE" : "ΔR²";
+    const shap = num(h.importancia_shap);
+    const imp = shap !== null ? shap : num(h.importancia_ganancia);
+    const etiqImp = shap !== null ? "Importancia SHAP" : "Importancia (ganancia)";
+    const ancho = imp !== null ? Math.max(0, Math.min(1, imp)) * 100 : 0;
+
+    const niveles = (Array.isArray(h.niveles) ? h.niveles : []).map((nv) => {
+      const d = num(nv.dMAE), p = num(nv.p_holm);
+      const val = d === null && p === null
+        ? `<span style="color:var(--muted,#57655C)">${esc(nv.nota || "—")}</span>`
+        : `ΔMAE ${fmtSigned(d)} · p Holm ${fmt(p, 4)}`;
+      return `<li style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:3px 0"><span>${esc(nv.nivel)}</span><span>${val}</span></li>`;
+    }).join("");
 
     return `
       <article class="dim-card dim-x${n}">
         <header class="dim-head">
           <span class="dim-index">${esc(h.codigo)}</span>
-          <span class="badge ${sig ? "sig-yes" : "sig-no"}">${sig ? "Contribuye" : "No contribuye"}</span>
+          ${chipEstado(h.estado)}
         </header>
         <p class="hyp-text">${esc(h.texto)}</p>
+        <ul style="list-style:none;margin:0 0 10px;padding:0;border-top:1px solid #E9ECE8">${niveles}</ul>
         <dl class="dim-stats">
-          <div><dt>${nombreDif}</dt><dd>${fmtSigned(Number(difVal))}</dd></div>
-          <div><dt>p-valor</dt><dd>${fmt(Number(h.p_valor))}</dd></div>
-          <div><dt>Import. Gini</dt><dd>${fmtPct(gini)}</dd></div>
+          <div><dt>${etiqImp}</dt><dd>${fmtPct(imp)}</dd></div>
         </dl>
         <div class="share" aria-hidden="true">
           <div class="share-track"><div class="share-fill" style="width:${ancho}%"></div></div>
@@ -509,12 +114,9 @@ function renderHipotesisEspecificas(r) {
       </article>`;
   }).join("");
 
-  if (isNum(Number(r.n_splits_ablation))) N_SPLITS_TSS = Number(r.n_splits_ablation);
-  const pMin = 1 / Math.pow(2, N_SPLITS_TSS);
-  
-  // ACTUALIZADO: Nota aclaratoria de validación cruzada expansiva (brecha de 2m)
+  if (num(r.n_splits_ablation) !== null) N_SPLITS_TSS = num(r.n_splits_ablation);
   $("he-note").textContent = lista.length
-    ? `Prueba de Wilcoxon unilateral con corrección de Holm sobre ${N_SPLITS_TSS} particiones expansivas (brecha de 2 meses). Es un contraste exploratorio: los folds comparten datos y no son independientes.`
+    ? `El estado resume tres contrastes (validación temporal, prueba con LightGBM directo y modelo final). En validación se aplicó Wilcoxon unilateral con Holm sobre ${N_SPLITS_TSS} particiones expansivas (brecha de 2 meses); como los folds se solapan, el p-valor indica consistencia y no una probabilidad exacta de error tipo I. La contribución es predictiva, no causal.`
     : "";
 }
 
@@ -529,171 +131,4 @@ async function loadHypothesisReport() {
       '<p class="result-error">No se pudo cargar el reporte de hipótesis. Verifica la conexión con la API.</p>';
     $("he-cards").innerHTML = "";
   }
-}
-
-// ---------------- Predicción ----------------
-function mensajeDeError(json, status) {
-  const d = json && json.detail;
-  if (Array.isArray(d)) {
-    return d.map((x) => `${(x.loc || []).slice(-1)[0] ?? "campo"}: ${x.msg}`).join("; ");
-  }
-  if (typeof d === "string" && d) return d;
-  return `Error del servidor (${status})`;
-}
-
-function setupFiltroProvinciaDistrito() {
-  const selProv = $("input-provincia");
-  const selDist = $("input-distrito");
-  if (!selProv || !selDist) return;
-
-  function repoblarDistritos(provincia, distritoSeleccionado = null) {
-    const distritos = DISTRITOS_POR_PROVINCIA[provincia] || [];
-    selDist.innerHTML = distritos
-      .map((d) => {
-        const sel = distritoSeleccionado && d === distritoSeleccionado ? " selected" : "";
-        return `<option value="${esc(d)}"${sel}>${esc(titleCase(d))}</option>`;
-      })
-      .join("");
-  }
-
-  selProv.addEventListener("change", () => {
-    repoblarDistritos(selProv.value);
-  });
-
-  repoblarDistritos(selProv.value, selDist.value || "PIURA");
-}
-
-function setupPredictForm() {
-  const form = $("predict-form");
-  const siembra = $("input-siembra");
-  const cosecha = $("input-cosecha");
-  const noteCosecha = $("note-cosecha");
-  const submitBtn = $("predict-submit");
-  const resultBox = $("predict-result");
-  const vacio = resultBox.innerHTML;
-
-  function validarCosecha() {
-    const s = parseFloat(siembra.value) || 0;
-    const c = parseFloat(cosecha.value) || 0;
-    const excede = c > s;
-    noteCosecha.textContent = excede ? "No puede superar la superficie sembrada" : "";
-    noteCosecha.classList.toggle("warn", excede);
-    cosecha.classList.toggle("is-invalid", excede);
-    return !excede;
-  }
-  siembra.addEventListener("input", validarCosecha);
-  cosecha.addEventListener("input", validarCosecha);
-
-  form.addEventListener("reset", () => {
-    setTimeout(() => {
-      validarCosecha();
-      resultBox.innerHTML = vacio;
-      const selProv = $("input-provincia");
-      const selDist = $("input-distrito");
-      if (selProv && selDist) {
-        const distritos = DISTRITOS_POR_PROVINCIA[selProv.value] || [];
-        selDist.innerHTML = distritos
-          .map((d) => `<option value="${esc(d)}">${esc(titleCase(d))}</option>`)
-          .join("");
-      }
-    }, 0);
-  });
-
-  form.addEventListener("submit", async (ev) => {
-    ev.preventDefault();
-
-    if (!form.checkValidity()) {
-      form.reportValidity();
-      return;
-    }
-    if (!validarCosecha()) {
-      cosecha.focus();
-      return;
-    }
-
-    const raw = Object.fromEntries(new FormData(form).entries());
-
-    // Payload con los nombres que el backend FastAPI espera (incluyendo las nuevas variables de X4)
-    const data = {
-      ANO:            Number(raw.ANO),
-      MES:            Number(raw.MES),
-      SIEMBRA:        Number(raw.SIEMBRA),
-      COSECHA:        Number(raw.COSECHA),
-      PRODUCCION:     Number(raw.PRODUCCION),
-      PRECIO_LAG1:    Number(raw.PRECIO_LAG1),
-      MEDIA_MOVIL_3:  Number(raw.MEDIA_MOVIL_3),
-      VARIACION_PRECIO_PREVIA: Number(raw.VARIACION_PRECIO_PREVIA || 0),
-      MESES_DESDE_PRECIO_PREVIO: Number(raw.MESES_DESDE_PRECIO_PREVIO || 1),
-      PROVINCIA:      raw.PROVINCIA,
-      DISTRITO:       raw.DISTRITO,
-      COD_CULTIVO:    Number(raw.CULTIVO),
-    };
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Calculando…";
-    resultBox.innerHTML = '<div class="result-loading"><p>Consultando el modelo…</p></div>';
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/predict`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(mensajeDeError(json, res.status));
-
-      const precio = Number(json.precio_predicho_S_por_kg);
-      if (!isNum(precio)) throw new Error("La API no devolvió un precio válido.");
-
-      const anterior = data.PRECIO_LAG1;
-      const deltaPct = anterior > 0 ? ((precio - anterior) / anterior) * 100 : null;
-      const deltaHtml = deltaPct === null ? "" : `
-        <span class="result-delta ${deltaPct >= 0 ? "up" : "down"}">
-          ${deltaPct >= 0 ? "▲" : "▼"} ${Math.abs(deltaPct).toFixed(1)}% frente al mes anterior
-        </span>`;
-
-      resultBox.innerHTML = `
-        <div class="result-card">
-          <p class="result-label">Precio estimado</p>
-          <p class="result-price">S/ ${precio.toFixed(3)}<span class="unit"> por kg</span></p>
-          ${deltaHtml}
-          ${Array.isArray(json.intervalo_90) ? `<p class="result-label">Intervalo del 90%: S/ ${json.intervalo_90[0].toFixed(2)} – S/ ${json.intervalo_90[1].toFixed(2)}</p>` : ""}
-          <dl class="result-compare">
-            <div><dt>Mes anterior</dt><dd>S/ ${fmt(anterior, 3)}</dd></div>
-            <div><dt>Media móvil 3 meses</dt><dd>S/ ${fmt(data.MEDIA_MOVIL_3, 3)}</dd></div>
-          </dl>
-        </div>`;
-    } catch (e) {
-      const sinConexion = e instanceof TypeError;
-      const msg = sinConexion
-        ? `No se pudo conectar con la API en ${API_BASE_URL}. Verifica que el backend esté activo.`
-        : e.message;
-      resultBox.innerHTML = `<p class="result-error" role="alert"><b>No se pudo calcular el precio.</b><br />${esc(msg)}</p>`;
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Predecir precio";
-    }
-  });
-}
-
-// ---------------- Tablas ----------------
-function renderTable(elId, rows, opciones = {}) {
-  const table = $(elId);
-  const cols = Object.keys(rows[0]);
-  const esNumerica = (c) => isNum(Number(rows[0][c])) && typeof rows[0][c] === "number";
-  const head = cols.map((c) =>
-    `<th class="${esNumerica(c) ? "num" : ""}">${esc(COLUMN_LABELS[c] || c.replace(/_/g, " "))}</th>`
-  ).join("");
-  const body = rows.map((r, i) => {
-    const tds = cols.map((c) => {
-      const custom = opciones.celda ? opciones.celda(c, r, i) : null;
-      const contenido = custom !== null && custom !== undefined
-        ? custom
-        : esNumerica(c) ? fmt(r[c]) : esc(r[c]);
-      return `<td class="${esNumerica(c) ? "num" : ""}">${contenido}</td>`;
-    }).join("");
-    const mejor = opciones.mejorFila && opciones.mejorFila(r) ? "is-best" : "";
-    return `<tr class="${mejor}">${tds}</tr>`;
-  }).join("");
-  table.innerHTML = `<thead><tr>${head}</tr></thead><tbody>${body}</tbody>`;
 }

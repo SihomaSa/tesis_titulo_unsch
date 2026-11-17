@@ -50,6 +50,7 @@ ALPHA = 0.05
 
 # Criterio de aceptación de la Hipótesis General (sección 3.6.3 de la tesis)
 UMBRAL_R2_OFICIAL = 0.85
+UMBRAL_R2_REFERENCIA = UMBRAL_R2_OFICIAL 
 
 # Segmentación por valor del cultivo (limitación documentada en 4.4.4)
 UMBRAL_PRECIO_ALTO = 4.5   # S/ por kg
@@ -76,10 +77,7 @@ MATRIZ_CONSISTENCIA = {
     "problema_general": "¿En qué medida las dimensiones del entorno agroeconómico contribuyen predictivamente en la eficacia de la predicción de los precios agrícolas mediante técnicas de Machine Learning en la región Piura, 2025?",
     "objetivo_general": "Determinar la contribución predictiva del entorno agroeconómico en la eficacia de las técnicas de Machine Learning para la predicción de precios agrícolas en la región Piura, 2025.",
     # Obs. 1: la hipótesis general se separa en eficacia (HG-a) y superación de baselines (HG-b); las dimensiones se contrastan en H1–H4.
-    "hipotesis_general": "HG-a: el modelo de Machine Learning seleccionado alcanza un R² ≥ 0.85 en datos no vistos de la región Piura. HG-b: el modelo reduce el error de pronóstico frente a los baselines de persistencia y media móvil.",
-    "hipotesis_general_a": "El modelo de Machine Learning seleccionado alcanza un R² ≥ 0.85 en el conjunto de prueba cronológico (región Piura).",
-    "hipotesis_general_b": "El modelo seleccionado reduce el error de pronóstico (MAE) frente a los baselines de persistencia y de media móvil, con diferencias de pérdida pareadas por mes.",
-    "hipotesis_general_original": "El entorno agroeconómico influye significativamente en las técnicas de Machine Learning para la predicción eficaz de precios agrícolas en la región Piura, 2025.",
+        "hipotesis_general": "Las dimensiones del entorno agroeconómico presentan distintos niveles de contribución predictiva en la estimación del precio en chacra mediante técnicas de Machine Learning en la región Piura, durante el período de estudio.",
     "dimensiones": [
         {"codigo": "X1", "clave": "X1_Temporal", "nombre": "Dimensión Temporal", **_dim("temporal"),
          "variables": ["ANO", "MES_NUM", "MES_SEN", "MES_COS", "ESTACION"]},
