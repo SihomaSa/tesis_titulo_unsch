@@ -171,7 +171,22 @@ def main():
         from scipy.stats import spearmanr
         fm = res_x3sep["folds_mae"]
         comp = np.array(fm["completo"])
-        pct_hist = [72.75, 95.83, 96.41, 97.38, 97.50, 96.55, 96.23, 98.45, 98.29, 95.64]
+        # Usar los pct_valid_con_historial reales del esquema de CV en uso
+        # pct_valid_con_historial real de los folds de MesesExpansivo (reproducible, sin hardcode)
+        from src.data.splits import MesesExpansivo
+        from src.config import N_SPLITS_ABLATION as _N_ABL
+        _tss = MesesExpansivo(
+            np.asarray(df["MES_IDX"])[idx_dev],
+            n_splits=_N_ABL,
+            gap=info_split["gap_meses"],
+        )
+        _th = df["TIENE_HISTORIAL"].iloc[idx_dev].to_numpy()
+        pct_hist = np.array([
+            _th[b].mean() * 100
+            for a, b in _tss.split(np.zeros(len(_th)))
+            if len(a) > 0 and len(b) > 0
+        ])
+        print(f"[Spearman] pct_valid_con_historial por fold: {np.round(pct_hist, 2).tolist()}")
         for k in ["X1_Temporal", "X2_Productiva", "X3a_Territorio", "X3b_Producto", "X4_Economica_Historica"]:
             dif = np.array(fm[f"sin_{k}"]) - comp
             rho, p = spearmanr(dif, pct_hist)
@@ -201,7 +216,9 @@ def main():
 
         print("\n[Obs.2,9] ΔMAE por fold de la ablación y % con historial")
         cierre_observaciones.ablacion_por_fold(df, y, idx_dev, features,
-                                               robustez.dimensiones_x3_separada(dimensiones), p_lgbm, a.rapido)
+                                       robustez.dimensiones_x3_separada(dimensiones), p_lgbm, a.rapido,
+                                       mes_idx=df["MES_IDX"].to_numpy(),
+                                       gap=info_split["gap_meses"])
 
         print("\n[Obs.11] Particiones y folds")
         documentacion.tabla_particiones(df, idx_tr, idx_va, idx_te, horizonte=h)

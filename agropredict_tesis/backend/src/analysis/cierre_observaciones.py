@@ -27,7 +27,7 @@ from src.analysis import significancia as sg
 from src.analysis.robustez import _cols_x2_rezagada, _params, params_residual
 from src.config import N_SPLITS_ABLATION, OUT_TAB
 from src.models.pipelines import build_pipeline
-
+from src.data.splits import MesesExpansivo
 
 # ---------------------------------------------------------------------------
 # A) Robustez de la significancia con historial real
@@ -86,9 +86,10 @@ def variante_x2_modelo_final(df, y, idx_dev, idx_te, features, dimensiones, p_re
     yt = y.iloc[idx_te].to_numpy()
     per = df["PERIODO"].iloc[idx_te].to_numpy()
     x2 = dimensiones["X2_Productiva"]
-    esc = {"Original (X2 del mismo mes)": features,
-           "X2 rezagada (observación previa)": [f for f in features if f not in x2] + cols_x2,
+    esc = {"Original (X2 hasta T-h)": features,
+           "X2 con un mes adicional de rezago (T-h-1)": [f for f in features if f not in x2] + cols_x2,
            "Sin X2": [f for f in features if f not in x2]}
+    base_key = "Original (X2 hasta T-h)"
 
     def ajusta(feats):
         Xv = df[feats].astype(float)
@@ -97,12 +98,12 @@ def variante_x2_modelo_final(df, y, idx_dev, idx_te, features, dimensiones, p_re
         return pipe.predict(Xv.iloc[idx_te])
 
     preds = {n: ajusta(fs) for n, fs in esc.items()}
-    base = preds["Original (X2 del mismo mes)"]
+    base = preds[base_key]
     filas = []
     for n, p in preds.items():
         fila = {"Modelo": "LightGBM sobre persistencia (modelo final)", "Escenario": n,
                 "n_variables": len(esc[n]), "R2": r2_score(yt, p), "MAE": mean_absolute_error(yt, p)}
-        if n != "Original (X2 del mismo mes)":
+        if n != base_key:
             d = sg.perdida_mensual(per, yt, p, base)          # > 0 => el original es mejor que la variante
             h = sg.hac_media(d)
             lo, hi, _ = sg.bootstrap_bloques_media(d)
@@ -119,10 +120,14 @@ def variante_x2_modelo_final(df, y, idx_dev, idx_te, features, dimensiones, p_re
 # ---------------------------------------------------------------------------
 # C) ΔMAE por fold de la ablación (LightGBM directo) y % con historial
 # ---------------------------------------------------------------------------
-def ablacion_por_fold(df, y, idx_dev, features, dimensiones, p_lgbm, rapido=False):
+def ablacion_por_fold(df, y, idx_dev, features, dimensiones, p_lgbm, rapido=False,
+                      mes_idx=None, gap=2):
     """Para cada fold de la MISMA validación temporal de run_ablation, calcula el ΔMAE
     (sin dimensión − completo; > 0 => la dimensión ayuda) y el % de registros de validación con
     historial. Resume con Spearman entre ΔMAE y % con historial, y con el promedio sin el fold 1.
+
+    v3: usa MesesExpansivo (meses completos, brecha=gap) cuando se pasa mes_idx, igual que
+    run_ablation. Sin mes_idx cae a TimeSeriesSplit (compatibilidad con llamadas antiguas).
 
     Pasa dimensiones_x3_separada(dimensiones) para ver territorio y producto por separado."""
     n_splits = 4 if rapido else N_SPLITS_ABLATION
@@ -130,17 +135,24 @@ def ablacion_por_fold(df, y, idx_dev, features, dimensiones, p_lgbm, rapido=Fals
     Xd = df[features].astype(float).iloc[idx_dev]
     yd = y.iloc[idx_dev]
     th = df["TIENE_HISTORIAL"].iloc[idx_dev].to_numpy()
-    tss = TimeSeriesSplit(n_splits=n_splits)
+
+    # --- v3: mismo esquema de CV que run_ablation ---
+    if mes_idx is None:
+        tss = TimeSeriesSplit(n_splits=n_splits)
+        splits = list(tss.split(Xd))
+    else:
+        tss = MesesExpansivo(np.asarray(mes_idx)[idx_dev], n_splits=n_splits, gap=gap)
+        splits = [(a, b) for a, b in tss.split(Xd) if len(a) > 0 and len(b) > 0]
 
     def mae_folds(feats):
         out = []
-        for a, b in tss.split(Xd):
+        for a, b in splits:
             pipe = build_pipeline("lgbm", feats, **prm)
             pipe.fit(Xd.iloc[a][feats], yd.iloc[a])
             out.append(mean_absolute_error(yd.iloc[b], pipe.predict(Xd.iloc[b][feats])))
         return np.array(out)
 
-    pct_hist = np.array([th[b].mean() * 100 for _, b in tss.split(Xd)])
+    pct_hist = np.array([th[b].mean() * 100 for _, b in splits])
     comp = mae_folds(features)
     filas, resumen = [], []
     for k, cols in dimensiones.items():
@@ -151,7 +163,7 @@ def ablacion_por_fold(df, y, idx_dev, features, dimensiones, p_lgbm, rapido=Fals
                           "MAE_completo": c, "MAE_sin_dim": s, "Dif_MAE": d})
         rho, p_rho = (stats.spearmanr(pct_hist, dif) if len(dif) > 3 else (np.nan, np.nan))
         resumen.append({"Dimension": k, "Dif_MAE_media_todos_folds": dif.mean(),
-                        "Dif_MAE_media_sin_fold1": dif[1:].mean(),
+                        "Dif_MAE_media_sin_fold1": dif[1:].mean() if len(dif) > 1 else np.nan,
                         "folds_donde_ayuda": int((dif > 0).sum()), "n_folds": len(dif),
                         "Spearman_dif_vs_pct_historial": rho, "p_Spearman": p_rho})
     pd.DataFrame(filas).to_csv(os.path.join(OUT_TAB, "tabla_ablacion_por_fold.csv"), index=False)

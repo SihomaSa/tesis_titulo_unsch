@@ -3,55 +3,55 @@
   "modelo_seleccionado": "LightGBM sobre persistencia",
   "n_splits_ablation": 10,
   "modelo_final": {
-    "r2_final": 0.7360160556573124,
-    "mae_final": 0.4935885452745995,
-    "rmse_final": 1.0200346349561746,
-    "mape_final": 25.091826278517427
+    "r2_final": 0.7383500224267787,
+    "mae_final": 0.49664858734956363,
+    "rmse_final": 1.0155153969925295,
+    "mape_final": 25.43521103501472
   },
   "hipotesis_general": {
     "texto": "HG-a: el modelo de Machine Learning seleccionado alcanza un R² ≥ 0.85 en datos no vistos de la región Piura. HG-b: el modelo reduce el error de pronóstico frente a los baselines de persistencia y media móvil.",
     "estado_vs_umbral_OFICIAL": "RECHAZADA",
-    "evidencia": "R² en prueba = 0.7360 (umbral oficial = 0.85); MAE persistencia = 0.5276 vs modelo = 0.4936"
+    "evidencia": "R² en prueba = 0.7384 (umbral oficial = 0.85); MAE persistencia = 0.5276 vs modelo = 0.4966"
   },
   "hipotesis_especificas": [
     {
       "codigo": "X1",
       "texto": "La dimensión temporal del entorno agroeconómico contribuye predictivamente en la eficacia de la predicción de precios agrícolas mediante técnicas de Machine Learning.",
-      "R2_sin_dimension": 0.73471705752463,
-      "diferencia_R2": 0.0038210298998834213,
-      "p_valor": 0.322265625,
+      "R2_sin_dimension": 0.7388880139328752,
+      "diferencia_R2": 0.0003993115251988977,
+      "p_valor": 0.921875,
       "significativa_wilcoxon": "No",
-      "importancia_gini_dimension": 0.19484092023507815,
+      "importancia_gini_dimension": 0.18880466484832387,
       "estado_consistencia": "PARCIALMENTE RESPALDADA"
     },
     {
       "codigo": "X2",
       "texto": "La dimensión productiva del entorno agroeconómico contribuye predictivamente en la eficacia de la predicción de precios agrícolas mediante técnicas de Machine Learning.",
       "R2_sin_dimension": 0.7414083305053863,
-      "diferencia_R2": -0.002870243080872914,
-      "p_valor": 0.919921875,
+      "diferencia_R2": -0.0021210050473122743,
+      "p_valor": 0.921875,
       "significativa_wilcoxon": "No",
-      "importancia_gini_dimension": 0.16521794589100097,
+      "importancia_gini_dimension": 0.23155644668369124,
       "estado_consistencia": "NO RESPALDADA"
     },
     {
       "codigo": "X3",
       "texto": "La dimensión espacial y de producto del entorno agroeconómico contribuye predictivamente en la eficacia de la predicción de precios agrícolas mediante técnicas de Machine Learning.",
-      "R2_sin_dimension": 0.6592034890513931,
-      "diferencia_R2": 0.07933459837312029,
+      "R2_sin_dimension": 0.6651920613812589,
+      "diferencia_R2": 0.07409526407681521,
       "p_valor": 0.00390625,
       "significativa_wilcoxon": "Sí",
-      "importancia_gini_dimension": 0.18363066510694007,
+      "importancia_gini_dimension": 0.2076991800254908,
       "estado_consistencia": "PARCIALMENTE RESPALDADA"
     },
     {
       "codigo": "X4",
       "texto": "La dimensión económica histórica del entorno agroeconómico contribuye predictivamente en la eficacia de la predicción de precios agrícolas mediante técnicas de Machine Learning.",
-      "R2_sin_dimension": 0.7206148653738762,
-      "diferencia_R2": 0.017923222050637233,
-      "p_valor": 0.1962890625,
-      "significativa_wilcoxon": "No",
-      "importancia_gini_dimension": 0.4563104687669808,
+      "R2_sin_dimension": 0.7132063929453527,
+      "diferencia_R2": 0.026080932512721366,
+      "p_valor": 0.029296875,
+      "significativa_wilcoxon": "Sí",
+      "importancia_gini_dimension": 0.3719397084424941,
       "estado_consistencia": "RESPALDADA"
     }
   ]

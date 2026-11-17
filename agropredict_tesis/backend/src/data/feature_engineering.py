@@ -79,18 +79,28 @@ def _x4_x2_horizonte(df, h):
         df[c + "_ACT"] = df[c]
 
     if X2_MODO == "rezagada":
-        # Variante principal: último dato con mes <= T - h
+        # --- X2 principal: último dato con mes <= T - h - EXTRA ---
         izq2 = izq.copy()
         izq2["ORIGEN_X2"] = izq2["MES_IDX"] - h - X2_REZAGO_EXTRA_MESES
         der2 = base[SERIE + ["MES_IDX"] + X2C].rename(
-            columns={"MES_IDX": "MES_ULT_X2", **{c: c + "_LAG" for c in X2C}})
+            columns={"MES_IDX": "MES_ULT_X2", **{c: c + "_PRINCIPAL" for c in X2C}})
         m2 = pd.merge_asof(izq2.sort_values("ORIGEN_X2"), der2.sort_values("MES_ULT_X2"),
                            left_on="ORIGEN_X2", right_on="MES_ULT_X2", by=SERIE, direction="backward")
-        df = df.merge(m2[SERIE + ["MES_IDX", "MES_ULT_X2"] + [c + "_LAG" for c in X2C]],
+        df = df.merge(m2[SERIE + ["MES_IDX", "MES_ULT_X2"] + [c + "_PRINCIPAL" for c in X2C]],
                       on=SERIE + ["MES_IDX"], how="left")
-        for c in X2C:
-            df[c] = df[c + "_LAG"]        # las columnas X2 pasan a contener solo información del origen
 
+        # --- Columnas *_LAG de sensibilidad: un mes adicional de rezago (T - h - EXTRA - 1) ---
+        izq2["ORIGEN_X2_LAG"] = izq2["MES_IDX"] - h - X2_REZAGO_EXTRA_MESES - 1
+        der3 = base[SERIE + ["MES_IDX"] + X2C].rename(
+            columns={"MES_IDX": "MES_ULT_X2_LAG", **{c: c + "_LAG" for c in X2C}})
+        m3 = pd.merge_asof(izq2.sort_values("ORIGEN_X2_LAG"), der3.sort_values("MES_ULT_X2_LAG"),
+                           left_on="ORIGEN_X2_LAG", right_on="MES_ULT_X2_LAG", by=SERIE, direction="backward")
+        df = df.merge(m3[SERIE + ["MES_IDX", "MES_ULT_X2_LAG"] + [c + "_LAG" for c in X2C]],
+                      on=SERIE + ["MES_IDX"], how="left")
+
+        # La X2 principal ocupa las columnas X2 estándar (T - h - EXTRA)
+        for c in X2C:
+            df[c] = df[c + "_PRINCIPAL"]
     elif X2_MODO == "inmediata":
         # Variante de sensibilidad: observación inmediatamente anterior sin restricción de T-h
         # (permite T-1 o T-2, lo que en producción sería fuga, pero es prueba de estrés)

@@ -66,12 +66,12 @@ De los registros iniciales solo se retiene una fracción pequeña. Se distinguen
 
 | Escenario | Hiperparámetros | n | n prueba | R² | MAE modelo | MAE persistencia | Reducción MAE (%) |
 |---|---|---|---|---|---|---|---|
-| Regla estricta (la del estudio) | ajustados | 14 393 | 2 148 | 0.7820 | 0.4205 | 0.4392 | 4.3 |
+| Regla estricta (la del estudio) | ajustados | 14 393 | 2 148 | 0.7775 | 0.4189 | 0.4392 | 4.6 |
 | Regla estricta (la del estudio) | por defecto | 14 393 | 2 148 | 0.7479 | 0.4708 | 0.4392 | -7.2 |
-| Se conserva COSECHA=0 y PRODUCCION>0 | ajustados | 35 293 | 5 090 | 0.7752 | 0.4032 | 0.4109 | 1.9 |
+| Se conserva COSECHA=0 y PRODUCCION>0 | ajustados | 35 293 | 5 090 | 0.7840 | 0.4010 | 0.4109 | 2.4 |
 | Se conserva COSECHA=0 y PRODUCCION>0 | por defecto | 35 293 | 5 090 | 0.7520 | 0.4444 | 0.4109 | -8.2 |
 
-*Nota.* En ambos escenarios el modelo con hiperparámetros ajustados supera a la persistencia en MAE (4.3 %, 1.9 %), de modo que la conclusión cualitativa no depende de la regla de cosecha, aunque el margen cambia. Con hiperparámetros por defecto el modelo no supera a la persistencia (-7.2 %, -8.2 %): la ventaja depende del ajuste. Los hiperparámetros del escenario relajado se tomaron del ajuste con la muestra estricta. Esta sensibilidad se calcula con horizonte de un mes (h = 1) y sin brecha entre conjuntos, por lo que sus valores absolutos no son comparables con los del modelo con horizonte de la Tabla F. Elaboración propia.
+*Nota.* En ambos escenarios el modelo con hiperparámetros ajustados supera a la persistencia en MAE (4.6 %, 2.4 %), de modo que la conclusión cualitativa no depende de la regla de cosecha, aunque el margen cambia. Con hiperparámetros por defecto el modelo no supera a la persistencia (-7.2 %, -8.2 %): la ventaja depende del ajuste. Los hiperparámetros del escenario relajado se tomaron del ajuste con la muestra estricta. Esta sensibilidad se calcula con horizonte de un mes (h = 1) y sin brecha entre conjuntos, por lo que sus valores absolutos no son comparables con los del modelo con horizonte de la Tabla F. Elaboración propia.
 
 **Tabla 6a.** Distribución por provincia antes y después de la depuración
 
@@ -181,10 +181,10 @@ Los hiperparámetros (valores de configuración fijados antes del entrenamiento,
 | Modelo | MAE de la validación cruzada temporal | Hiperparámetros seleccionados |
 |---|---|---|
 | Regresión Lineal | — | — |
-| Random Forest | 0.4044 | n_estimators = 200; min_samples_leaf = 2; max_features = 1; max_depth = 14 |
-| XGBoost | 0.3916 | n_estimators = 200; max_depth = 6; subsample = 0.7; reg_lambda = 5; min_child_weight = 10; learning_rate = 0.05; colsample_bytree = 0.85 |
-| LightGBM | 0.3919 | n_estimators = 200; max_depth = 6; subsample = 0.85; reg_lambda = 2; learning_rate = 0.05; colsample_bytree = 0.7; subsample_freq = 1; reg_alpha = 2; num_leaves = 31; min_child_samples = 10 |
-| LightGBM sobre persistencia | 0.3749 | n_estimators = 200; max_depth = 4; subsample = 1; reg_lambda = 2; learning_rate = 0.1; colsample_bytree = 1; subsample_freq = 1; num_leaves = 31; min_child_samples = 30; objective = regression_l1 |
+| Random Forest | 0.3974 | n_estimators = 300; min_samples_leaf = 2; max_features = 1; max_depth = 14 |
+| XGBoost | 0.3886 | n_estimators = 400; max_depth = 6; subsample = 0.7; reg_lambda = 1; min_child_weight = 10; learning_rate = 0.02; colsample_bytree = 1 |
+| LightGBM | 0.3896 | n_estimators = 200; max_depth = 6; subsample = 0.85; reg_lambda = 2; learning_rate = 0.05; colsample_bytree = 0.7; subsample_freq = 1; reg_alpha = 2; num_leaves = 31; min_child_samples = 10 |
+| LightGBM sobre persistencia | 0.3719 | n_estimators = 600; max_depth = 6; subsample = 0.7; reg_lambda = 0; learning_rate = 0.02; colsample_bytree = 1; subsample_freq = 1; num_leaves = 63; min_child_samples = 30; objective = regression_l1 |
 
 *Nota.* Elaboración propia. La Regresión Lineal no tiene hiperparámetros relevantes.
 
@@ -192,7 +192,7 @@ Los hiperparámetros (valores de configuración fijados antes del entrenamiento,
 
 ### 4.2.1. Fase 7 — Evaluación y selección del modelo
 
-La selección del modelo se hizo en el conjunto de validación, con el MAE como criterio. Resultó seleccionado **LightGBM sobre persistencia** (MAE de validación = 0.4680 S/ por kg; la persistencia obtuvo 0.4923).
+La selección del modelo se hizo en el conjunto de validación, con el MAE como criterio. Resultó seleccionado **LightGBM sobre persistencia** (MAE de validación = 0.4677 S/ por kg; la persistencia obtuvo 0.4923).
 
 **Tabla E.** Comparación de modelos en el conjunto de validación
 
@@ -200,15 +200,15 @@ La selección del modelo se hizo en el conjunto de validación, con el MAE como 
 |---|---|---|---|---|---|---|
 | Persistencia (baseline) | 0.6374 | 0.4923 | 0.9892 | 24.8 | 23.6 | — |
 | Media móvil 3 (baseline) | 0.6626 | 0.5117 | 0.9542 | 24.4 | 24.5 | — |
-| Regresión Lineal | 0.6734 | 0.5416 | 0.9388 | 29.1 | 25.9 | 0.7775 |
-| Random Forest | 0.6603 | 0.5052 | 0.9575 | 25.5 | 24.2 | 0.7464 |
-| XGBoost | 0.6677 | 0.4932 | 0.9469 | 26.0 | 23.6 | 0.7571 |
-| LightGBM | 0.6802 | 0.4913 | 0.9289 | 25.5 | 23.5 | 0.7556 |
-| LightGBM sobre persistencia | 0.6949 | 0.4680 | 0.9073 | 23.9 | 22.4 | 0.7671 |
+| Regresión Lineal | 0.6735 | 0.5417 | 0.9386 | 29.1 | 25.9 | 0.7760 |
+| Random Forest | 0.6585 | 0.5061 | 0.9599 | 25.5 | 24.2 | 0.7571 |
+| XGBoost | 0.6678 | 0.4913 | 0.9468 | 25.5 | 23.5 | 0.7619 |
+| LightGBM | 0.6807 | 0.4932 | 0.9282 | 25.5 | 23.6 | 0.7622 |
+| LightGBM sobre persistencia | 0.6894 | 0.4677 | 0.9155 | 23.8 | 22.4 | 0.7730 |
 
 *Nota.* R², MAE, RMSE (S/ por kg) y MAPE (%). Elaboración propia.
 
-Con el modelo ya elegido y reentrenado con entrenamiento y validación, se evaluó una única vez el conjunto de prueba (n = 2 148, los meses más recientes, nunca vistos). LightGBM sobre persistencia alcanzó R² = 0.7360, MAE = 0.4936 S/ por kg, RMSE = 1.0200 S/ por kg y MAPE = 25.09 %. Este valor no alcanza el criterio de aceptabilidad establecido (R² ≥ 0.85). Frente al pronóstico ingenuo de persistencia (R² = 0.6862; MAE = 0.5276), el modelo reduce el error absoluto medio en 6.5 % (media móvil: R² = 0.7397; MAE = 0.5071).
+Con el modelo ya elegido y reentrenado con entrenamiento y validación, se evaluó una única vez el conjunto de prueba (n = 2 148, los meses más recientes, nunca vistos). LightGBM sobre persistencia alcanzó R² = 0.7384, MAE = 0.4966 S/ por kg, RMSE = 1.0155 S/ por kg y MAPE = 25.44 %. Este valor no alcanza el criterio de aceptabilidad establecido (R² ≥ 0.85). Frente al pronóstico ingenuo de persistencia (R² = 0.6862; MAE = 0.5276), el modelo reduce el error absoluto medio en 5.9 % (media móvil: R² = 0.7397; MAE = 0.5071).
 
 **Tabla F.** Resultados en el conjunto de prueba (hold-out cronológico)
 
@@ -216,11 +216,11 @@ Con el modelo ya elegido y reentrenado con entrenamiento y validación, se evalu
 |---|---|---|---|---|---|---|
 | Persistencia (baseline) | 0.6862 | 0.5276 | 1.1121 | 26.4 | 23.4 | 0.6838 |
 | Media móvil 3 (baseline) | 0.7397 | 0.5071 | 1.0129 | 24.0 | 22.5 | 0.7472 |
-| Regresión Lineal | 0.7162 | 0.5639 | 1.0577 | 30.3 | 25.0 | 0.7152 |
-| Random Forest | 0.6370 | 0.6027 | 1.1961 | 30.5 | 26.7 | 0.7141 |
-| XGBoost | 0.6845 | 0.5596 | 1.1151 | 28.5 | 24.8 | 0.7433 |
-| LightGBM | 0.6652 | 0.5681 | 1.1487 | 28.5 | 25.2 | 0.7414 |
-| LightGBM sobre persistencia | 0.7360 | 0.4936 | 1.0200 | 25.1 | 21.9 | 0.7590 |
+| Regresión Lineal | 0.7160 | 0.5645 | 1.0580 | 30.4 | 25.0 | 0.7135 |
+| Random Forest | 0.6407 | 0.5982 | 1.1900 | 30.2 | 26.5 | 0.7170 |
+| XGBoost | 0.6746 | 0.5684 | 1.1326 | 29.4 | 25.2 | 0.7325 |
+| LightGBM | 0.6763 | 0.5622 | 1.1296 | 28.3 | 24.9 | 0.7435 |
+| LightGBM sobre persistencia | 0.7384 | 0.4966 | 1.0155 | 25.4 | 22.0 | 0.7562 |
 
 *Nota.* La selección del modelo se realizó en validación; la prueba se usó una sola vez. WAPE = error absoluto total / precio total (%); R²_log = R² sobre el logaritmo del precio, menos sensible a los pocos cultivos de precio alto. Elaboración propia.
 
@@ -236,59 +236,59 @@ Con el modelo ya elegido y reentrenado con entrenamiento y validación, se evalu
 
 | Provincia | N_test | R2 | MAE |
 |---|---|---|---|
-| AYABACA | 443 | 0.8297 | 0.4928 |
-| SECHURA | 242 | 0.7965 | 0.4989 |
-| PIURA | 388 | 0.7677 | 0.5389 |
-| HUANCABAMBA | 472 | 0.6195 | 0.4427 |
-| MORROPON | 241 | 0.5355 | 0.6754 |
-| PAITA | 169 | 0.2348 | 0.3880 |
-| SULLANA | 193 | 0.1942 | 0.3873 |
+| AYABACA | 443 | 0.8327 | 0.4914 |
+| SECHURA | 242 | 0.7998 | 0.5120 |
+| PIURA | 388 | 0.7681 | 0.5453 |
+| HUANCABAMBA | 472 | 0.6313 | 0.4408 |
+| MORROPON | 241 | 0.5275 | 0.6806 |
+| PAITA | 169 | 0.2774 | 0.3834 |
+| SULLANA | 193 | 0.1244 | 0.3977 |
 
 **Tabla H.** Rendimiento según el nivel de precio del cultivo
 
 | Segmento | N_test | Pct_test | R2 | MAE |
 |---|---|---|---|---|
-| Precio ≤ S/ 4.5/kg | 2 001 | 93.2 | 0.5354 | 0.3747 |
-| Precio > S/ 4.5/kg | 147 | 6.8 | -0.1646 | 2.1116 |
+| Precio ≤ S/ 4.5/kg | 2 001 | 93.2 | 0.5242 | 0.3793 |
+| Precio > S/ 4.5/kg | 147 | 6.8 | -0.1343 | 2.0946 |
 
-El desempeño es heterogéneo: el modelo alcanza R² = 0.5354 en el segmento de precios bajos (93.2 % de la prueba) y R² = -0.1646 en el de precios altos (MAE = 2.1116 S/ por kg). Los cultivos de alto valor son menos frecuentes y más volátiles, lo que se reconoce como limitación (sección 4.4.4).
+El desempeño es heterogéneo: el modelo alcanza R² = 0.5242 en el segmento de precios bajos (93.2 % de la prueba) y R² = -0.1343 en el de precios altos (MAE = 2.0946 S/ por kg). Los cultivos de alto valor son menos frecuentes y más volátiles, lo que se reconoce como limitación (sección 4.4.4).
 
 ### 4.2.3. Fase 8 — Interpretabilidad
 
-La importancia por ganancia del modelo asigna X1 19.5 %, X2 16.5 %, X3 18.4 %, X4 45.6 %. El análisis con valores SHAP (Lundberg y Lee, 2017) atribuye X1 22.3 %, X2 8.6 %, X3 10.5 %, X4 58.6 % de la contribución media absoluta a las predicciones. Como la ganancia puede repartirse arbitrariamente entre variables correlacionadas, se verificó con permutación agrupada: al desordenar las variables de X4 el R² cae 0.1536; en las demás dimensiones la caída es X1 0.0012, X2 0.0071, X3 0.0353.
+La importancia por ganancia del modelo asigna X1 18.9 %, X2 23.2 %, X3 20.8 %, X4 37.2 %. El análisis con valores SHAP (Lundberg y Lee, 2017) atribuye X1 24.2 %, X2 9.3 %, X3 10.7 %, X4 55.8 % de la contribución media absoluta a las predicciones. Como la ganancia puede repartirse arbitrariamente entre variables correlacionadas, se verificó con permutación agrupada: al desordenar las variables de X4 el R² cae 0.1410; en las demás dimensiones la caída es X1 -0.0018, X2 0.0054, X3 0.0274.
 
 **Figura F.** Importancia por dimensión (ganancia, SHAP y permutación). → `figura_importancia_por_dimension.png`; **Figura G.** Resumen SHAP → `figura_shap_resumen.png`
 
 ### 4.2.4. Detección de anomalías
 
-Isolation Forest con contaminación de 5 % identificó 720 registros anómalos (5.00 % de 14 393). El precio promedio fue S/ 1.708 por kg en los registros normales y S/ 3.736 en los anómalos (diferencia de S/ 2.028). Se exportó una muestra aleatoria de 50 anomalías para revisión manual: **la proporción de errores de registro y eventos reales debe volver a calcularla el autor sobre esa muestra** (`muestra_50_anomalias_revision_manual.csv`), pues el conjunto de anomalías cambió respecto de la versión anterior.
+Isolation Forest con contaminación de 5 % identificó 720 registros anómalos (5.00 % de 14 393). El precio promedio fue S/ 1.701 por kg en los registros normales y S/ 3.861 en los anómalos (diferencia de S/ 2.160). Se exportó una muestra aleatoria de 50 anomalías para revisión manual: **la proporción de errores de registro y eventos reales debe volver a calcularla el autor sobre esa muestra** (`muestra_50_anomalias_revision_manual.csv`), pues el conjunto de anomalías cambió respecto de la versión anterior.
 
 **Figura H.** Distribución de precios normales y anómalos. → `figura_anomalias_isolation_forest.png`
 
 ### 4.2.5. Significancia de la mejora frente a los baselines
 
-**Eficacia frente al umbral.** El R² de prueba (0.7360) tiene un intervalo de confianza del 95 % de [0.6470; 0.7739] (bootstrap por bloques de 3 meses sobre 16 meses de prueba). Decisión frente al umbral de 0.85: se rechaza (IC superior < umbral).
+**Eficacia frente al umbral.** El R² de prueba (0.7384) tiene un intervalo de confianza del 95 % de [0.6459; 0.7792] (bootstrap por bloques de 3 meses sobre 16 meses de prueba). Decisión frente al umbral de 0.85: se rechaza (IC superior < umbral).
 
 **Tabla L.** Reducción del MAE frente a baselines y otros modelos (diferencias de pérdida pareadas por mes)
 
 | Referencia | Muestra | MAE ref. | MAE modelo | Reducción (%) | IC95 inf. | IC95 sup. | p (Holm) |
 |---|---|---|---|---|---|---|---|
-| Persistencia | Todos los registros | 0.5276 | 0.4936 | 6.5 | 0.0170 | 0.0568 | 0.013 |
-| Persistencia | Solo con precio previo real | 0.5107 | 0.4888 | 4.3 | 0.0121 | 0.0372 | 0.012 |
-| Media móvil 3 | Todos los registros | 0.5071 | 0.4936 | 2.7 | -0.0031 | 0.0287 | 0.071 |
-| Media móvil 3 | Solo con precio previo real | 0.4897 | 0.4888 | 0.2 | -0.0121 | 0.0111 | 0.316 |
-| LightGBM directo | Todos los registros | 0.5681 | 0.4936 | 13.1 | 0.0143 | 0.1295 | 0.071 |
-| LightGBM directo | Solo con precio previo real | 0.5643 | 0.4888 | 13.4 | 0.0122 | 0.1297 | 0.075 |
-| Random Forest | Todos los registros | 0.6027 | 0.4936 | 18.1 | 0.0473 | 0.1584 | 0.018 |
-| Random Forest | Solo con precio previo real | 0.5948 | 0.4888 | 17.8 | 0.0460 | 0.1581 | 0.023 |
-| Regresión Lineal | Todos los registros | 0.5639 | 0.4936 | 12.5 | 0.0273 | 0.1160 | 0.032 |
-| Regresión Lineal | Solo con precio previo real | 0.5560 | 0.4888 | 12.1 | 0.0240 | 0.1151 | 0.045 |
-| XGBoost | Todos los registros | 0.5596 | 0.4936 | 11.8 | 0.0216 | 0.1107 | 0.056 |
-| XGBoost | Solo con precio previo real | 0.5543 | 0.4888 | 11.8 | 0.0203 | 0.1110 | 0.062 |
+| Persistencia | Todos los registros | 0.5276 | 0.4966 | 5.9 | 0.0155 | 0.0506 | 0.010 |
+| Persistencia | Solo con precio previo real | 0.5107 | 0.4915 | 3.8 | 0.0104 | 0.0323 | 0.016 |
+| Media móvil 3 | Todos los registros | 0.5071 | 0.4966 | 2.1 | -0.0056 | 0.0235 | 0.081 |
+| Media móvil 3 | Solo con precio previo real | 0.4897 | 0.4915 | -0.4 | -0.0168 | 0.0084 | 0.499 |
+| LightGBM directo | Todos los registros | 0.5622 | 0.4966 | 11.7 | 0.0143 | 0.1174 | 0.077 |
+| LightGBM directo | Solo con precio previo real | 0.5584 | 0.4915 | 12.0 | 0.0131 | 0.1181 | 0.079 |
+| Random Forest | Todos los registros | 0.5982 | 0.4966 | 17.0 | 0.0326 | 0.1554 | 0.046 |
+| Random Forest | Solo con precio previo real | 0.5903 | 0.4915 | 16.7 | 0.0303 | 0.1545 | 0.059 |
+| Regresión Lineal | Todos los registros | 0.5645 | 0.4966 | 12.0 | 0.0259 | 0.1139 | 0.046 |
+| Regresión Lineal | Solo con precio previo real | 0.5566 | 0.4915 | 11.7 | 0.0217 | 0.1128 | 0.061 |
+| XGBoost | Todos los registros | 0.5684 | 0.4966 | 12.6 | 0.0198 | 0.1156 | 0.061 |
+| XGBoost | Solo con precio previo real | 0.5631 | 0.4915 | 12.7 | 0.0191 | 0.1162 | 0.065 |
 
 *Nota.* IC95 de la diferencia media mensual de pérdida absoluta (referencia − modelo; > 0 favorece al modelo), por bootstrap de bloques móviles. Contraste unilateral con error estándar HAC (Newey–West), corrección de Holm por las comparaciones de cada muestra. Con pocos meses de prueba el poder es limitado. «LightGBM directo» es el LightGBM sin ancla de persistencia; el modelo evaluado es LightGBM sobre persistencia. Elaboración propia.
 
-Frente a la persistencia, el LightGBM sobre persistencia reduce el MAE en 6.5 % (IC95 de la diferencia mensual [0.017; 0.057]; p Holm = 0.013). Al excluir los registros sin precio previo —para los cuales la «persistencia» es solo un valor de respaldo (mediana) y no un pronóstico comparable— la reducción es de 4.3 % y sigue siendo significativa (IC95 [0.012; 0.037]; p Holm = 0.012). Con pérdida cuadrática (que penaliza más los errores grandes) el IC95 de la diferencia frente a la persistencia excluye 0 en 9 de 9 configuraciones de rezagos y bloques (con pérdida absoluta, en 9 de 9). Frente a Regresión Lineal, la ventaja se observa con pérdida absoluta pero no con pérdida cuadrática; el modelo se seleccionó por MAE y no es superior en términos de errores grandes.
+Frente a la persistencia, el LightGBM sobre persistencia reduce el MAE en 5.9 % (IC95 de la diferencia mensual [0.016; 0.051]; p Holm = 0.010). Al excluir los registros sin precio previo —para los cuales la «persistencia» es solo un valor de respaldo (mediana) y no un pronóstico comparable— la reducción es de 3.8 % y sigue siendo significativa (IC95 [0.010; 0.032]; p Holm = 0.016). Con pérdida cuadrática (que penaliza más los errores grandes) el IC95 de la diferencia frente a la persistencia excluye 0 en 9 de 9 configuraciones de rezagos y bloques (con pérdida absoluta, en 9 de 9). Frente a Regresión Lineal, la ventaja se observa con pérdida absoluta pero no con pérdida cuadrática; el modelo se seleccionó por MAE y no es superior en términos de errores grandes.
 
 ### 4.2.6. Error según la distancia al último precio observado
 
@@ -296,15 +296,15 @@ Frente a la persistencia, el LightGBM sobre persistencia reduce el MAE en 6.5 % 
 
 | Grupo | N | % de la prueba | MAE modelo | MAE persistencia | Reducción (%) | R² modelo |
 |---|---|---|---|---|---|---|
-| Sin historial previo | 49 | 2.3 | 0.6992 | — | — | 0.4269 |
-| Último precio en el mes T-h (distancia mínima) (distancia 3 m) | 492 | 22.9 | 0.2530 | 0.2365 | -7.0 | 0.8854 |
-| Último precio con 1–3 m de antigüedad (distancia 4–6 m) | 513 | 23.9 | 0.3121 | 0.3352 | 6.9 | 0.8899 |
-| Con 4–12 m de antigüedad (distancia 7–15 m) | 943 | 43.9 | 0.6544 | 0.6952 | 5.9 | 0.7135 |
-| Con más de 12 m de antigüedad (distancia > 15 m) | 151 | 7.0 | 0.8231 | 0.8489 | 3.0 | 0.5332 |
+| Sin historial previo | 49 | 2.3 | 0.7155 | — | — | 0.4087 |
+| Último precio en el mes T-h (distancia mínima) (distancia 3 m) | 492 | 22.9 | 0.2593 | 0.2365 | -9.6 | 0.8822 |
+| Último precio con 1–3 m de antigüedad (distancia 4–6 m) | 513 | 23.9 | 0.3195 | 0.3352 | 4.7 | 0.8870 |
+| Con 4–12 m de antigüedad (distancia 7–15 m) | 943 | 43.9 | 0.6555 | 0.6952 | 5.7 | 0.7172 |
+| Con más de 12 m de antigüedad (distancia > 15 m) | 151 | 7.0 | 0.8088 | 0.8489 | 4.7 | 0.5407 |
 
 *Nota.* En «sin historial previo» la persistencia usa la mediana de desarrollo y no es comparable. Elaboración propia.
 
-El modelo no supera a la persistencia cuando el último precio es reciente (Último precio en el origen (distancia 3 m): -7.0 %) y su ventaja aparece cuando la brecha es mayor (Último precio con 1–3 m de antigüedad (distancia 4–6 m): +6.9 %; Con 4–12 m de antigüedad (distancia 7–15 m): +5.9 %; Con más de 12 m de antigüedad (distancia > 15 m): +3.0 %). La mejora global, por tanto, proviene sobre todo de series con precios previos antiguos, donde la persistencia es menos informativa.
+El modelo no supera a la persistencia cuando el último precio es reciente (Último precio en el origen (distancia 3 m): -9.6 %) y su ventaja aparece cuando la brecha es mayor (Último precio con 1–3 m de antigüedad (distancia 4–6 m): +4.7 %; Con 4–12 m de antigüedad (distancia 7–15 m): +5.7 %; Con más de 12 m de antigüedad (distancia > 15 m): +4.7 %). La mejora global, por tanto, proviene sobre todo de series con precios previos antiguos, donde la persistencia es menos informativa.
 
 ## 4.3. CONTRASTACIÓN DE HIPÓTESIS
 
@@ -329,10 +329,10 @@ Criterio de reporte: una hipótesis se declara *respaldada* si resulta significa
 
 | Dimensión excluida | R² completo | R² sin dim. | ΔR² | p Holm (R²) | MAE completo | MAE sin dim. | ΔMAE | p Holm (MAE) |
 |---|---|---|---|---|---|---|---|---|
-| X1_Temporal | 0.7385 | 0.7347 | 0.0038 | 0.322 | 0.4020 | 0.4024 | 0.0005 | 0.922 |
-| X2_Productiva | 0.7385 | 0.7414 | -0.0029 | 0.920 | 0.4020 | 0.4031 | 0.0011 | 0.922 |
-| X3_Espacial_Producto | 0.7385 | 0.6592 | 0.0793 | 0.004 | 0.4020 | 0.4650 | 0.0630 | 0.004 |
-| X4_Economica_Historica | 0.7385 | 0.7206 | 0.0179 | 0.196 | 0.4020 | 0.4425 | 0.0405 | 0.004 |
+| X1_Temporal | 0.7393 | 0.7389 | 0.0004 | 0.922 | 0.4020 | 0.3997 | -0.0023 | 1.000 |
+| X2_Productiva | 0.7393 | 0.7414 | -0.0021 | 0.922 | 0.4020 | 0.4031 | 0.0011 | 1.000 |
+| X3_Espacial_Producto | 0.7393 | 0.6652 | 0.0741 | 0.004 | 0.4020 | 0.4724 | 0.0704 | 0.004 |
+| X4_Economica_Historica | 0.7393 | 0.7132 | 0.0261 | 0.029 | 0.4020 | 0.4492 | 0.0472 | 0.004 |
 
 *Nota.* Wilcoxon pareado unilateral sobre los folds temporales; ΔMAE = MAE sin la dimensión − MAE completo (> 0 favorece incluir la dimensión). Los folds son expansivos por meses completos con brecha de 2 mes(es); comparten datos de entrenamiento y son pocos, por lo que el Wilcoxon tiene poder limitado. Es un contraste exploratorio, no confirmatorio. Elaboración propia.
 
@@ -340,11 +340,11 @@ Criterio de reporte: una hipótesis se declara *respaldada* si resulta significa
 
 | Dimensión excluida | ΔR² | p Holm (R²) | ΔMAE | p Holm (MAE) |
 |---|---|---|---|---|
-| X1_Temporal | 0.0038 | 0.322 | 0.0005 | 0.922 |
-| X2_Productiva | -0.0029 | 0.920 | 0.0011 | 0.922 |
-| X3a_Territorio | 0.0063 | 0.027 | 0.0060 | 0.005 |
-| X3b_Producto | 0.0808 | 0.005 | 0.0650 | 0.005 |
-| X4_Economica_Historica | 0.0179 | 0.196 | 0.0405 | 0.005 |
+| X1_Temporal | 0.0004 | 0.922 | -0.0023 | 1.000 |
+| X2_Productiva | -0.0021 | 0.922 | 0.0011 | 1.000 |
+| X3a_Territorio | 0.0021 | 0.126 | 0.0036 | 0.015 |
+| X3b_Producto | 0.0775 | 0.005 | 0.0704 | 0.005 |
+| X4_Economica_Historica | 0.0261 | 0.039 | 0.0472 | 0.005 |
 
 *Nota.* El cultivo identifica el producto, no el territorio; por eso se evalúa por separado de provincia y distrito. Elaboración propia.
 
@@ -352,35 +352,35 @@ Criterio de reporte: una hipótesis se declara *respaldada* si resulta significa
 
 | Modelo | Dimensión excluida | Dif. MAE mensual | IC95 inf. | IC95 sup. | p (Holm) |
 |---|---|---|---|---|---|
-| LightGBM directo | X1_Temporal | -0.0057 | -0.0160 | 0.0060 | 1.000 |
-| LightGBM directo | X2_Productiva | -0.0073 | -0.0249 | 0.0148 | 1.000 |
-| LightGBM directo | X3a_Territorio | 0.0099 | 0.0003 | 0.0219 | 0.182 |
-| LightGBM directo | X3b_Producto | 0.0111 | -0.0039 | 0.0302 | 0.335 |
-| LightGBM directo | X4_Economica_Historica | 0.0371 | 0.0187 | 0.0528 | <0.001 |
-| Modelo final (LightGBM sobre persistencia) | X1_Temporal | 0.0186 | 0.0061 | 0.0306 | 0.016 |
-| Modelo final (LightGBM sobre persistencia) | X2_Productiva | -0.0010 | -0.0080 | 0.0059 | 0.904 |
-| Modelo final (LightGBM sobre persistencia) | X3a_Territorio | 0.0003 | -0.0037 | 0.0047 | 0.904 |
-| Modelo final (LightGBM sobre persistencia) | X3b_Producto | 0.0078 | 0.0005 | 0.0196 | 0.192 |
+| LightGBM directo | X1_Temporal | -0.0036 | -0.0111 | 0.0058 | 1.000 |
+| LightGBM directo | X2_Productiva | -0.0030 | -0.0130 | 0.0095 | 1.000 |
+| LightGBM directo | X3a_Territorio | 0.0152 | 0.0059 | 0.0251 | 0.012 |
+| LightGBM directo | X3b_Producto | 0.0114 | -0.0013 | 0.0288 | 0.233 |
+| LightGBM directo | X4_Economica_Historica | 0.0427 | 0.0210 | 0.0640 | 0.004 |
+| Modelo final (LightGBM sobre persistencia) | X1_Temporal | 0.0147 | 0.0049 | 0.0214 | 0.010 |
+| Modelo final (LightGBM sobre persistencia) | X2_Productiva | -0.0009 | -0.0049 | 0.0044 | 1.000 |
+| Modelo final (LightGBM sobre persistencia) | X3a_Territorio | -0.0025 | -0.0076 | 0.0041 | 1.000 |
+| Modelo final (LightGBM sobre persistencia) | X3b_Producto | 0.0090 | 0.0027 | 0.0183 | 0.059 |
 
 *Nota.* Diferencia = MAE sin la dimensión − MAE completo, promediada por mes; > 0 indica que la dimensión ayuda. En el modelo final X4 no se retira porque es la base de la persistencia. Elaboración propia.
 
-**Inestabilidad de la dimensión geográfica.** Las contribuciones de territorio y producto no coinciden entre la validación temporal y la prueba (Tablas N y O). El efecto del producto es mayor en los folds con menos registros con historial (correlación de Spearman entre ΔMAE y % con historial = -0.63; p = 0.050), lo que sugiere que el cultivo actúa como sustituto del nivel de precio cuando falta el precio previo y se vuelve redundante cuando existe. Es una interpretación compatible con los datos, no una prueba causal.
+**Inestabilidad de la dimensión geográfica.** Las contribuciones de territorio y producto no coinciden entre la validación temporal y la prueba (Tablas N y O). La correlación de Spearman entre el efecto del producto (ΔMAE) y el % de registros con historial por fold es -0.38 (p = 0.276): no hay evidencia de que el efecto del cultivo dependa de la disponibilidad de historial.
 
 **Tabla P.** Variante con la dimensión productiva rezagada (modelo final, conjunto de prueba)
 
 | Escenario | Variables | R² | MAE | Dif. MAE vs original | IC95 inf. | IC95 sup. | p (HAC) |
 |---|---|---|---|---|---|---|---|
-| Original (X2 según horizonte activo) | 17 | 0.7360 | 0.4936 | — | — | — | — |
-| X2 rezagada (observación previa) | 17 | 0.7347 | 0.4931 | -0.0005 | -0.0020 | 0.0010 | 0.791 |
-| Sin X2 | 13 | 0.7331 | 0.4952 | 0.0016 | -0.0080 | 0.0059 | 0.617 |
+| Original (X2 hasta T-h) | 17 | 0.7384 | 0.4966 | — | — | — | — |
+| X2 con un mes adicional de rezago (T-h-1) | 17 | 0.7373 | 0.4978 | 0.0012 | -0.0023 | 0.0042 | 0.548 |
+| Sin X2 | 13 | 0.7374 | 0.4959 | -0.0007 | -0.0049 | 0.0044 | 0.644 |
 
-*Nota.* La variante X2 rezagada utiliza las variables de siembra, cosecha, producción y rendimiento correspondientes a la observación previa de la misma serie, por lo que representa un escenario con información productiva histórica disponible al momento de emitir la predicción. La variante sin X2 permite evaluar el desempeño sin incorporar dichas variables. Las diferencias observadas frente al escenario original X2 rezagada: ΔMAE = -0.0005, p = 0.791; sin X2: ΔMAE = 0.0016, p = 0.617; sin embargo, estos resultados no demuestran equivalencia entre escenarios ni garantizan la disponibilidad operativa de las variables contemporáneas. Elaboración propia.
+*Nota.* La variante X2 rezagada utiliza las variables de siembra, cosecha, producción y rendimiento correspondientes a la observación previa de la misma serie, por lo que representa un escenario con información productiva histórica disponible al momento de emitir la predicción. La variante sin X2 permite evaluar el desempeño sin incorporar dichas variables. Las diferencias observadas frente al escenario original sin X2: ΔMAE = -0.0007, p = 0.644; sin embargo, estos resultados no demuestran equivalencia entre escenarios ni garantizan la disponibilidad operativa de las variables contemporáneas. Elaboración propia.
 
 ### 4.3.3. Decisión sobre las hipótesis
 
-**HG-a (eficacia): NO RESPALDADA.** R² = 0.7360 (IC95 [0.6470; 0.7739]) frente al umbral de 0.85. No alcanzar el umbral no invalida el estudio: indica que el modelo no cumple el criterio de eficacia fijado para este conjunto de datos.
+**HG-a (eficacia): NO RESPALDADA.** R² = 0.7384 (IC95 [0.6459; 0.7792]) frente al umbral de 0.85. No alcanzar el umbral no invalida el estudio: indica que el modelo no cumple el criterio de eficacia fijado para este conjunto de datos.
 
-**HG-b (superación de baselines): PARCIALMENTE RESPALDADA.** Frente a la media móvil la reducción es de 2.7 % (p Holm = 0.071). Frente a la persistencia es de 6.5 % (p Holm = 0.013) con todos los registros.
+**HG-b (superación de baselines): PARCIALMENTE RESPALDADA.** Frente a la media móvil la reducción es de 2.1 % (p Holm = 0.081). Frente a la persistencia es de 5.9 % (p Holm = 0.010) con todos los registros.
 
 **Tabla S.** Consistencia de los contrastes por dimensión
 
@@ -403,7 +403,7 @@ Criterio de reporte: una hipótesis se declara *respaldada* si resulta significa
 
 ### 4.3.4. Cómo interpretar la importancia de las dimensiones
 
-La importancia por ganancia, SHAP y permutación mide cuánto usa el modelo cada dimensión (*importancia predictiva*); la ablación mide cuánto empeora el pronóstico al retirarla (*aporte incremental*); ninguna de las dos estima un *efecto causal*. Pueden diferir porque las variables están correlacionadas. El porcentaje SHAP de cada dimensión se calcula como la suma del valor absoluto medio de SHAP de sus variables dividida por la suma de todas las variables (X4 = 58.6 %), sobre una muestra de 1 500 registros de prueba con historial, y está expresado en la escala log(precio / último precio): es el cambio relativo respecto de la persistencia, no soles. Un ejemplo de la divergencia es X2: 16.5 % por ganancia, 8.6 % por SHAP y un aporte incremental de -0.0029 de R². Otro ejemplo es X1: 22.3 % por SHAP frente a una caída de R² por permutación de 0.0012. No es una contradicción: SHAP se expresa en escala log(precio / último precio) y la permutación en R² del precio, de modo que miden cosas distintas.
+La importancia por ganancia, SHAP y permutación mide cuánto usa el modelo cada dimensión (*importancia predictiva*); la ablación mide cuánto empeora el pronóstico al retirarla (*aporte incremental*); ninguna de las dos estima un *efecto causal*. Pueden diferir porque las variables están correlacionadas. El porcentaje SHAP de cada dimensión se calcula como la suma del valor absoluto medio de SHAP de sus variables dividida por la suma de todas las variables (X4 = 55.8 %), sobre una muestra de 1 500 registros de prueba con historial, y está expresado en la escala log(precio / último precio): es el cambio relativo respecto de la persistencia, no soles. Un ejemplo de la divergencia es X2: 23.2 % por ganancia, 9.3 % por SHAP y un aporte incremental de -0.0021 de R². Otro ejemplo es X1: 24.2 % por SHAP frente a una caída de R² por permutación de -0.0018. No es una contradicción: SHAP se expresa en escala log(precio / último precio) y la permutación en R² del precio, de modo que miden cosas distintas.
 
 ### 4.3.5. Sensibilidad a la inclusión del año calendario (ANO)
 
@@ -413,12 +413,12 @@ La matriz de consistencia incluye el año calendario (ANO) en la dimensión temp
 
 | Especificación | Variables | R² (media ± DE) | MAE (media ± DE) | Ventaja mensual de MAE vs persistencia | p (HAC) vs persistencia |
 |---|---|---|---|---|---|
-| Con ANO | 17 | 0.7360 ± 0.0000 | 0.4936 ± 0.0000 | 0.0349 | 0.002 |
-| Sin ANO | 16 | 0.7297 ± 0.0000 | 0.5030 ± 0.0000 | 0.0210 | 0.034 |
+| Con ANO | 17 | 0.7377 ± 0.0011 | 0.4979 ± 0.0011 | 0.0319 | 0.002 |
+| Sin ANO | 16 | 0.7318 ± 0.0013 | 0.5045 ± 0.0011 | 0.0186 | 0.044 |
 
 *Nota.* DE = desviación estándar entre semillas. El contraste con ANO frente a sin ANO usa la predicción promedio de las semillas y pérdidas pareadas por mes (HAC, IC95 por bloques). Los p frente a la persistencia de esta tabla no llevan corrección de Holm: la inferencia principal frente a los baselines es la Tabla L. Elaboración propia.
 
-Con ANO el R² en prueba fue 0.7360 y el MAE 0.4936; sin ANO, 0.7297 y 0.5030. La diferencia mensual de MAE a favor de incluir ANO es 0.0140 (IC95 [0.0071; 0.0186]; p < 0.001), y la diferencia de MAE medio (0.0094 S/ por kg) supera la variabilidad entre semillas. El efecto de ANO es, por tanto, estadísticamente detectable pero de magnitud pequeña. Una posible explicación, no contrastada directamente, es que ANO capta el nivel de precios de períodos ya vistos en entrenamiento; para años posteriores el árbol lo trata como el último año conocido. Por ello el modelo debe reentrenarse periódicamente para pronosticar períodos futuros. Los hiperparámetros se fijaron intencionalmente: en corridas completas con y sin ANO la búsqueda aleatoria elige configuraciones distintas, por lo que comparar esas corridas mezclaría el efecto de ANO con el de los hiperparámetros.
+Con ANO el R² en prueba fue 0.7377 y el MAE 0.4979; sin ANO, 0.7318 y 0.5045. La diferencia mensual de MAE a favor de incluir ANO es 0.0133 (IC95 [0.0032; 0.0215]; p = 0.005), y la diferencia de MAE medio (0.0066 S/ por kg) supera la variabilidad entre semillas. El efecto de ANO es, por tanto, estadísticamente detectable pero de magnitud pequeña. Una posible explicación, no contrastada directamente, es que ANO capta el nivel de precios de períodos ya vistos en entrenamiento; para años posteriores el árbol lo trata como el último año conocido. Por ello el modelo debe reentrenarse periódicamente para pronosticar períodos futuros. Los hiperparámetros se fijaron intencionalmente: en corridas completas con y sin ANO la búsqueda aleatoria elige configuraciones distintas, por lo que comparar esas corridas mezclaría el efecto de ANO con el de los hiperparámetros.
 
 **Figura I.** Ablation por dimensión. → `figura_ablation_por_dimension.png`
 
@@ -428,11 +428,11 @@ Con ANO el R² en prueba fue 0.7360 y el MAE 0.4936; sin ANO, 0.7297 y 0.5030. L
 
 ### 4.4.1. Objetivo general: eficacia predictiva
 
-**Hallazgo.** El LightGBM sobre persistencia alcanzó R² = 0.7360 (IC95 [0.6470; 0.7739]), MAE = 0.4936 S/ por kg y MAPE = 25.1 % en un conjunto de prueba cronológico, y no cumple el umbral de 0.85. En R² es superado por Regresión Lineal (0.7162); su ventaja está en el MAE. **Antecedentes.** [COMPLETAR: 2–3 estudios nacionales e internacionales sobre precios agrícolas con autor, año, cultivos, algoritmo, horizonte, esquema de validación y métrica reportada.] **Coincidencias y diferencias.** [COMPLETAR] Los R² de otros estudios solo son comparables si el esquema de validación es cronológico y el objetivo es el mismo: la validación aleatoria, el horizonte, la agregación por cultivo y la presencia de rezagos del propio precio inflan el R². En este estudio la persistencia ya alcanza R² = 0.6862, de modo que gran parte de la varianza explicada proviene de la inercia del precio. **Aporte y límite.** El aporte es una evaluación cronológica, con pérdidas pareadas e incertidumbre, sobre series irregulares de Piura; no autoriza a generalizar a otras regiones ni a afirmar beneficios económicos.
+**Hallazgo.** El LightGBM sobre persistencia alcanzó R² = 0.7384 (IC95 [0.6459; 0.7792]), MAE = 0.4966 S/ por kg y MAPE = 25.4 % en un conjunto de prueba cronológico, y no cumple el umbral de 0.85. En R² es superado por Regresión Lineal (0.7160); su ventaja está en el MAE. **Antecedentes.** [COMPLETAR: 2–3 estudios nacionales e internacionales sobre precios agrícolas con autor, año, cultivos, algoritmo, horizonte, esquema de validación y métrica reportada.] **Coincidencias y diferencias.** [COMPLETAR] Los R² de otros estudios solo son comparables si el esquema de validación es cronológico y el objetivo es el mismo: la validación aleatoria, el horizonte, la agregación por cultivo y la presencia de rezagos del propio precio inflan el R². En este estudio la persistencia ya alcanza R² = 0.6862, de modo que gran parte de la varianza explicada proviene de la inercia del precio. **Aporte y límite.** El aporte es una evaluación cronológica, con pérdidas pareadas e incertidumbre, sobre series irregulares de Piura; no autoriza a generalizar a otras regiones ni a afirmar beneficios económicos.
 
 ### 4.4.2. Superación de baselines y horizonte
 
-**Hallazgo.** La reducción del MAE frente a la persistencia es de 6.5 % (p Holm = 0.013), pero depende de la muestra, de la métrica y de la distancia al último precio (Tablas L y M). **Explicación técnica.** Cuando el último precio es reciente, repetirlo es difícil de superar; el modelo aporta cuando ese precio es antiguo. **Antecedentes.** [COMPLETAR: estudios que comparen contra persistencia o modelos ingenuos; si no existen, dilo.] **Aporte y límite.** Un modelo de Machine Learning es valioso aquí sobre todo en series con precios previos antiguos; la mejora global es modesta.
+**Hallazgo.** La reducción del MAE frente a la persistencia es de 5.9 % (p Holm = 0.010), pero depende de la muestra, de la métrica y de la distancia al último precio (Tablas L y M). **Explicación técnica.** Cuando el último precio es reciente, repetirlo es difícil de superar; el modelo aporta cuando ese precio es antiguo. **Antecedentes.** [COMPLETAR: estudios que comparen contra persistencia o modelos ingenuos; si no existen, dilo.] **Aporte y límite.** Un modelo de Machine Learning es valioso aquí sobre todo en series con precios previos antiguos; la mejora global es modesta.
 
 ### 4.4.3. Dimensión temporal
 
@@ -464,11 +464,11 @@ Con ANO el R² en prueba fue 0.7360 y el MAE 0.4936; sin ANO, 0.7297 y 0.5030. L
 
 # CAPÍTULO V — CONCLUSIONES
 
-1. **Objetivo general.** Se desarrolló y evaluó, con una metodología de nueve fases, un modelo de predicción del precio en chacra para Piura. El modelo seleccionado en validación, LightGBM sobre persistencia, obtuvo en prueba (n = 2 148) R² = 0.7360 (IC95 [0.6470; 0.7739]), MAE = 0.4936 S/ por kg y MAPE = 25.1 %; el criterio R² ≥ 0.85 no se cumple.
+1. **Objetivo general.** Se desarrolló y evaluó, con una metodología de nueve fases, un modelo de predicción del precio en chacra para Piura. El modelo seleccionado en validación, LightGBM sobre persistencia, obtuvo en prueba (n = 2 148) R² = 0.7384 (IC95 [0.6459; 0.7792]), MAE = 0.4966 S/ por kg y MAPE = 25.4 %; el criterio R² ≥ 0.85 no se cumple.
 
-2. **Comparación con referencias.** Frente a la persistencia el MAE se reduce 6.5 % (p Holm = 0.013), diferencia significativa; frente a la media móvil, 2.7 % (p Holm = 0.071), no concluyente; frente a la regresión lineal, 12.5 % (p Holm = 0.032). En R², Regresión Lineal (0.7162) supera al modelo seleccionado.  Frente a Regresión Lineal la ventaja se observa con pérdida absoluta (MAE) pero no con pérdida cuadrática. La mejora técnica es modesta y depende de la métrica y de la distancia al último precio.
+2. **Comparación con referencias.** Frente a la persistencia el MAE se reduce 5.9 % (p Holm = 0.010), diferencia significativa; frente a la media móvil, 2.1 % (p Holm = 0.081), no concluyente; frente a la regresión lineal, 12.0 % (p Holm = 0.046). En R², Regresión Lineal (0.7160) supera al modelo seleccionado.  Frente a Regresión Lineal la ventaja se observa con pérdida absoluta (MAE) pero no con pérdida cuadrática. La mejora técnica es modesta y depende de la métrica y de la distancia al último precio.
 
-3. **Horizonte.** El modelo pronostica el precio a h = 3 mes(es), condicionado a que exista cosecha con precio en el mes objetivo; su desempeño relativo a la persistencia según la antigüedad del último precio es: T-h (distancia 3 m): -7.0 %; Último precio con 1–3 m de antigüedad (distancia 4–6 m): +6.9 %; Con 4–12 m de antigüedad (distancia 7–15 m): +5.9 %; Con más de 12 m de antigüedad (distancia > 15 m): +3.0 %.
+3. **Horizonte.** El modelo pronostica el precio a h = 3 mes(es), condicionado a que exista cosecha con precio en el mes objetivo; su desempeño relativo a la persistencia según la antigüedad del último precio es: T-h (distancia 3 m): -9.6 %; Último precio con 1–3 m de antigüedad (distancia 4–6 m): +4.7 %; Con 4–12 m de antigüedad (distancia 7–15 m): +5.7 %; Con más de 12 m de antigüedad (distancia > 15 m): +4.7 %.
 
 4. **Dimensión temporal.** Hipótesis parcialmente respaldada. Aporte no significativo en validación temporal, no significativo en prueba (LightGBM directo) y significativo sobre el modelo final. Incluye el año calendario (ANO), cuyo efecto con hiperparámetros fijos se detalla en la sección 4.3.5 (Tabla T); su contribución es inestable entre contrastes y no es evidencia de causalidad.
 
@@ -478,11 +478,11 @@ Con ANO el R² en prueba fue 0.7360 y el MAE 0.4936; sin ANO, 0.7297 y 0.5030. L
 
 7. **Dimensión económica histórica.** Hipótesis respaldada. Aporte significativo en validación temporal, significativo en prueba (LightGBM directo). Concentra la capacidad predictiva, coherente con la inercia de los precios; en el modelo final es además su ancla estructural y no puede retirarse.
 
-8. **Año calendario.** Con hiperparámetros fijos, incluir ANO cambia el MAE de 0.5030 a 0.4936 (diferencia mensual 0.0140; p < 0.001); el efecto es pequeño y no es proyectable a años posteriores al entrenamiento.
+8. **Año calendario.** Con hiperparámetros fijos, incluir ANO cambia el MAE de 0.5045 a 0.4979 (diferencia mensual 0.0133; p = 0.005); el efecto es pequeño y no es proyectable a años posteriores al entrenamiento.
 
-9. **Interpretabilidad.** La dimensión económica histórica es la de mayor peso (58.6 % de la contribución SHAP, en escala log-ratio respecto de la persistencia). Las medidas de importancia describen el uso predictivo de las variables y no efectos causales.
+9. **Interpretabilidad.** La dimensión económica histórica es la de mayor peso (55.8 % de la contribución SHAP, en escala log-ratio respecto de la persistencia). Las medidas de importancia describen el uso predictivo de las variables y no efectos causales.
 
-10. **Anomalías.** Isolation Forest marcó 5.00 % de los registros; los anómalos tienen un precio medio de S/ 3.736 frente a S/ 1.708 de los normales.
+10. **Anomalías.** Isolation Forest marcó 5.00 % de los registros; los anómalos tienen un precio medio de S/ 3.861 frente a S/ 1.701 de los normales.
 
 11. **Alcance.** Los resultados demuestran un desempeño técnico en un conjunto de prueba retrospectivo (la reducción del MAE frente a la persistencia equivale a unos S/ 0.03 por kg); no demuestran beneficios económicos ni mejores decisiones agrícolas, que requieren evaluación con usuarios o datos operativos.
 
@@ -498,8 +498,6 @@ Con ANO el R² en prueba fue 0.7360 y el MAE 0.4936; sin ANO, 0.7297 y 0.5030. L
 | X2 Productiva | Registro agrícola regional, rezagada h = 3 mes(es) [+ X2_REZAGO_EXTRA_MESES] | [COMPLETAR: periodicidad y fecha de publicación de la fuente] | [VERIFICAR] |
 | X3 Geográfica | Catálogo de cultivo, provincia y distrito | Estática | Sí |
 | X4 Económica histórica | Último precio observado con mes ≤ T − 3 | [COMPLETAR: rezago de publicación del precio previo] | [VERIFICAR] |
-
-Como análisis de sensibilidad, se repitió la evaluación del modelo final con la dimensión productiva rezagada (valores de la observación previa) y sin ella: la diferencia de MAE frente al original es de -0.0005 (p = 0.791). Esta evidencia debe interpretarse como un análisis de sensibilidad retrospectivo y no como una demostración de disponibilidad anticipada de las variables productivas; para una aplicación operativa antes de la publicación del registro agrícola, sería necesario utilizar exclusivamente los predictores históricos disponibles hasta la fecha de emisión del pronóstico (Tabla P).
 
 ## 3.x Variable ANO en la dimensión temporal
 

@@ -95,6 +95,6 @@ MATRIZ_CONSISTENCIA = {
 
 # --- v2: horizonte fijo (solo se usa con --horizonte) ---
 HORIZONTES = [1, 3, 6]          # meses calendario entre el origen del pronóstico y el mes objetivo
-X2_MODO = "inmediata"           # "rezagada" (principal) | "contemporanea" (cota superior, no disponible ex ante)
-X2_REZAGO_EXTRA_MESES = 0       # súbelo a 12 si SIEMBRA/COSECHA/PRODUCCION se publican anualmente
+X2_MODO = "rezagada"            # "rezagada" (principal, X2 hasta T-3) | "inmediata" (T-1, solo sensibilidad) | "sin_x2"
+X2_REZAGO_EXTRA_MESES = 0       # rezago base = h (3) + EXTRA; con h=3 y EXTRA=0 -> X2 hasta T-3     # súbelo a 12 si SIEMBRA/COSECHA/PRODUCCION se publican anualmente
 USAR_ANO_V2 = True              # ANO no se puede extrapolar con árboles (obs. 16)
