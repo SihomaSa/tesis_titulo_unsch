@@ -77,7 +77,9 @@ MATRIZ_CONSISTENCIA = {
     "problema_general": "¿En qué medida las dimensiones del entorno agroeconómico contribuyen predictivamente en la eficacia de la predicción de los precios agrícolas mediante técnicas de Machine Learning en la región Piura, 2025?",
     "objetivo_general": "Determinar la contribución predictiva del entorno agroeconómico en la eficacia de las técnicas de Machine Learning para la predicción de precios agrícolas en la región Piura, 2025.",
     # Obs. 1: la hipótesis general se separa en eficacia (HG-a) y superación de baselines (HG-b); las dimensiones se contrastan en H1–H4.
-        "hipotesis_general": "Las dimensiones del entorno agroeconómico presentan distintos niveles de contribución predictiva en la estimación del precio en chacra mediante técnicas de Machine Learning en la región Piura, durante el período de estudio.",
+    "hipotesis_general": "Las dimensiones del entorno agroeconómico presentan distintos niveles de contribución predictiva en la estimación del precio en chacra mediante técnicas de Machine Learning en la región Piura, durante el período de estudio.",
+    "hg_a": "HG-a (eficacia): el modelo seleccionado alcanza R² ≥ 0.85 en el conjunto de prueba.",
+    "hg_b": "HG-b (baselines): el modelo reduce el error de pronóstico frente a la persistencia y la media móvil.",
     "dimensiones": [
         {"codigo": "X1", "clave": "X1_Temporal", "nombre": "Dimensión Temporal", **_dim("temporal"),
          "variables": ["ANO", "MES_NUM", "MES_SEN", "MES_COS", "ESTACION"]},

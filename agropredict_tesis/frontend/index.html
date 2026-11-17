@@ -223,17 +223,18 @@
           <fieldset class="fx-x4">
             <legend><span class="dim-tag">X4</span> Precio histórico</legend>
             <div class="field-grid">
-              <label>Precio del mes anterior (S/ por kg)
+              <label>Último precio disponible (S/ por kg)
                 <input type="number" step="any" min="0" name="PRECIO_LAG1" id="input-precio-lag1" value="2.5" required />
               </label>
-              <label>Media móvil de 3 meses (S/ por kg)
+              <label>Media móvil de las 3 últimas observaciones (S/ por kg)
                 <input type="number" step="any" min="0" name="MEDIA_MOVIL_3" value="2.4" required />
               </label>
-              <label>Variación precio previa (%)
+              <label>Variación respecto al precio previo (%)
                 <input type="number" step="any" name="VARIACION_PRECIO_PREVIA" value="0" required />
               </label>
-              <label>Meses desde el último precio
-                <input type="number" step="1" min="0" name="MESES_DESDE_PRECIO_PREVIO" value="1" required />
+              <label>Meses desde el último precio (mínimo 3)
+                <input type="number" step="1" min="3" name="MESES_DESDE_PRECIO_PREVIO" value="3" required />
+                <span class="field-note">El modelo pronostica con 3 meses de anticipación: el último precio conocido tiene al menos 3 meses.</span>
               </label>
             </div>
           </fieldset>
